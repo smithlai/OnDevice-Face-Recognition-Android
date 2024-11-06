@@ -8,6 +8,7 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
+import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.widget.FrameLayout
@@ -109,6 +110,7 @@ class FaceDetectionOverlay(
         addView(this.boundingBoxOverlay, boundingBoxOverlayParams)
     }
 
+//    @SuppressLint("RestrictedApi")
     private val analyzer =
         ImageAnalysis.Analyzer { image ->
             if (isProcessing) {
@@ -116,16 +118,30 @@ class FaceDetectionOverlay(
                 return@Analyzer
             }
             isProcessing = true
+//            val executionTime1 = measureTimeMillis {
+            try{
+                frameBitmap = image.toBitmap()
+            }catch (e: Exception){
+                Log.e("Error", "Failed to convert imageproxy to frameBitmap")
+                image.close()
+                return@Analyzer
+            }
+//            }
 
             // Transform android.net.Image to Bitmap
-            frameBitmap =
-                Bitmap.createBitmap(
-                    image.image!!.width,
-                    image.image!!.height,
-                    Bitmap.Config.ARGB_8888
-                )
-            frameBitmap.copyPixelsFromBuffer(image.planes[0].buffer)
-
+//            val executionTime2 = measureTimeMillis {
+//                frameBitmap =
+//                    Bitmap.createBitmap(
+//                        image.image!!.width,
+//                        image.image!!.height,
+//                        Bitmap.Config.ARGB_8888
+//                    )
+//                frameBitmap.copyPixelsFromBuffer(image.planes[0].buffer)
+//
+//            }
+//            println("執行時間：$executionTime1 毫秒, $executionTime2 毫秒")
+//            "執行時間：3 毫秒, 14 毫秒"
+//            "執行時間：1 毫秒, 6 毫秒"
             // Configure frameHeight and frameWidth for output2overlay transformation matrix
             // and apply it to `frameBitmap`
             if (!isImageTransformedInitialized) {

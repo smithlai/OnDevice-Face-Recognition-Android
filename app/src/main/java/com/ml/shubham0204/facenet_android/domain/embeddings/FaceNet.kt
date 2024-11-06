@@ -31,6 +31,10 @@ class FaceNet(context: Context, useGpu: Boolean = true, useXNNPack: Boolean = tr
     private val imgSize = 160
 
     // Output embedding size
+    // facenet
+//    private val embeddingDim = 128
+
+    // facenet-512
     private val embeddingDim = 512
 
     private var interpreter: Interpreter
@@ -57,8 +61,13 @@ class FaceNet(context: Context, useGpu: Boolean = true, useXNNPack: Boolean = tr
                 useXNNPACK = useXNNPack
                 useNNAPI = true
             }
-        interpreter =
-            Interpreter(FileUtil.loadMappedFile(context, "facenet_512.tflite"), interpreterOptions)
+        // facenet
+//        interpreter =
+//            Interpreter(FileUtil.loadMappedFile(context, "facenet.tflite"), interpreterOptions)
+
+        // facenet-512
+                interpreter =
+                    Interpreter(FileUtil.loadMappedFile(context, "facenet_512.tflite"), interpreterOptions)
     }
 
     // Gets an face embedding using FaceNet

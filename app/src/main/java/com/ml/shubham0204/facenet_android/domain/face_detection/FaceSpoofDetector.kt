@@ -64,7 +64,7 @@ class FaceSpoofDetector(context: Context, useGpu: Boolean = false, useXNNPack: B
                     numThreads = 4
                 }
                 useXNNPACK = useXNNPack
-                useNNAPI = true
+                useNNAPI = false
             }
         firstModelInterpreter =
             Interpreter(FileUtil.loadMappedFile(context, "spoof_model_scale_2_7.tflite"), interpreterOptions)

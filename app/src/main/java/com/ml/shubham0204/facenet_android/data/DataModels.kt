@@ -16,6 +16,7 @@ data class FaceImageRecord(
 
     // the FaceNet-512 model provides a 512-dimensional embedding
     // the FaceNet model provides a 128-dimensional embedding
+//    @HnswIndex(dimensions = 128) var faceEmbedding: FloatArray = floatArrayOf()
     @HnswIndex(dimensions = 512) var faceEmbedding: FloatArray = floatArrayOf()
 )
 
