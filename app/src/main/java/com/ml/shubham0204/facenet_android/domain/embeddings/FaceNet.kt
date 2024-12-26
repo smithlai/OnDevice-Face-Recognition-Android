@@ -2,6 +2,7 @@ package com.ml.shubham0204.facenet_android.domain.embeddings
 
 import android.content.Context
 import android.graphics.Bitmap
+import com.ml.shubham0204.facenet_android.BuildConfig
 import java.nio.ByteBuffer
 import kotlin.math.max
 import kotlin.math.pow
@@ -30,12 +31,8 @@ class FaceNet(context: Context, useGpu: Boolean = true, useXNNPack: Boolean = tr
     // Input image size for FaceNet model.
     private val imgSize = 160
 
-    // Output embedding size
-    // facenet
-//    private val embeddingDim = 128
-
-    // facenet-512
-    private val embeddingDim = 512
+    // Output embedding size, facenet (128) or facenet-512
+    private val embeddingDim = BuildConfig.FACE_EMBEDDING_DIMENSION
 
     private var interpreter: Interpreter
     private val imageTensorProcessor =
@@ -62,12 +59,11 @@ class FaceNet(context: Context, useGpu: Boolean = true, useXNNPack: Boolean = tr
                 useNNAPI = true
             }
         // facenet
-//        interpreter =
-//            Interpreter(FileUtil.loadMappedFile(context, "facenet.tflite"), interpreterOptions)
-
-        // facenet-512
-                interpreter =
-                    Interpreter(FileUtil.loadMappedFile(context, "facenet_512.tflite"), interpreterOptions)
+        interpreter = when (BuildConfig.FACE_EMBEDDING_DIMENSION){
+            128  -> Interpreter(FileUtil.loadMappedFile(context, "facenet.tflite"), interpreterOptions)
+            512 -> Interpreter(FileUtil.loadMappedFile(context, "facenet_512.tflite"), interpreterOptions)
+            else -> Interpreter(FileUtil.loadMappedFile(context, "facenet_512.tflite"), interpreterOptions)
+        }
     }
 
     // Gets an face embedding using FaceNet

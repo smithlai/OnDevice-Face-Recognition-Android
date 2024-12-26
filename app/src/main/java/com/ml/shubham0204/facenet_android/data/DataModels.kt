@@ -1,5 +1,6 @@
 package com.ml.shubham0204.facenet_android.data
 
+import com.ml.shubham0204.facenet_android.BuildConfig
 import io.objectbox.annotation.Entity
 import io.objectbox.annotation.HnswIndex
 import io.objectbox.annotation.Id
@@ -14,10 +15,10 @@ data class FaceImageRecord(
     @Index var personID: Long = 0,
     var personName: String = "",
 
-    // the FaceNet-512 model provides a 512-dimensional embedding
+
     // the FaceNet model provides a 128-dimensional embedding
-//    @HnswIndex(dimensions = 128) var faceEmbedding: FloatArray = floatArrayOf()
-    @HnswIndex(dimensions = 512) var faceEmbedding: FloatArray = floatArrayOf()
+    // the FaceNet-512 model provides a 512-dimensional embedding
+    @HnswIndex(dimensions = BuildConfig.FACE_EMBEDDING_DIMENSION.toLong()) var faceEmbedding: FloatArray = floatArrayOf()
 )
 
 @Entity

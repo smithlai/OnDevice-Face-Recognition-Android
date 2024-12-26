@@ -20,6 +20,8 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
+        // 設定維度，這裡可以設為 128 或 512
+        buildConfigField("int", "FACE_EMBEDDING_DIMENSION", "512")
     }
 
     signingConfigs {
@@ -50,6 +52,9 @@ android {
     }
     buildFeatures {
         compose = true
+
+        // 啟用 BuildConfig 功能
+        buildConfig = true
     }
     packaging {
         resources {
