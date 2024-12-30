@@ -1,6 +1,7 @@
 package com.ml.shubham0204.facenet_android
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -18,16 +19,19 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        // 取得 Intent 中的目標 Screen
+        val startDestination = intent.getStringExtra("startDestination")
+
         setContent {
             val navHostController = rememberNavController()
             NavHost(
                 navController = navHostController,
-                startDestination = "detect",
+                startDestination = startDestination?:"detect",
                 enterTransition = { fadeIn() },
                 exitTransition = { fadeOut() }
             ) {
                 composable("add-face") { AddFaceScreen { navHostController.navigateUp() } }
-                composable("detect") { DetectScreen { navHostController.navigate("face-list") } }
+                composable("detect") { DetectScreen(startDestination !=null) { navHostController.navigate("face-list") } }
                 composable("face-list") {
                     FaceListScreen(
                         onNavigateBack = { navHostController.navigateUp() },

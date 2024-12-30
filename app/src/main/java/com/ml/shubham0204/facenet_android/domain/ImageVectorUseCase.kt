@@ -1,14 +1,17 @@
 package com.ml.shubham0204.facenet_android.domain
 
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Rect
 import android.net.Uri
+import androidx.compose.runtime.mutableStateOf
 import com.ml.shubham0204.facenet_android.data.FaceImageRecord
 import com.ml.shubham0204.facenet_android.data.ImagesVectorDB
 import com.ml.shubham0204.facenet_android.data.RecognitionMetrics
 import com.ml.shubham0204.facenet_android.domain.embeddings.FaceNet
 import com.ml.shubham0204.facenet_android.domain.face_detection.FaceSpoofDetector
 import com.ml.shubham0204.facenet_android.domain.face_detection.MediapipeFaceDetector
+import com.ml.shubham0204.facenet_android.presentation.components.FaceDetectionOverlay
 import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlin.time.DurationUnit
@@ -17,13 +20,18 @@ import org.koin.core.annotation.Single
 
 @Single
 class ImageVectorUseCase(
+    private val context: Context,
     private val mediapipeFaceDetector: MediapipeFaceDetector,
     private val faceSpoofDetector: FaceSpoofDetector,
     private val imagesVectorDB: ImagesVectorDB,
     private val faceNet: FaceNet
 ) {
-
+    companion object{
+        const val NOT_RECON = "Not recognized"
+    }
+    val latestFaceRecognitionResult = mutableStateOf<List<FaceRecognitionResult>>(emptyList())
     data class FaceRecognitionResult(
+        val croppedFace:Bitmap,
         val personName: String,
         val boundingBox: Rect,
         val spoofResult: FaceSpoofDetector.FaceSpoofResult? = null
@@ -56,16 +64,16 @@ class ImageVectorUseCase(
         frameBitmap: Bitmap
     ): Pair<RecognitionMetrics?, List<FaceRecognitionResult>> {
         // Perform face-detection and get the cropped face as a Bitmap
-        val (faceDetectionResult, t1) =
+        val (faceCropResults, t1) =
             measureTimedValue { mediapipeFaceDetector.getAllCroppedFaces(frameBitmap) }
         val faceRecognitionResults = ArrayList<FaceRecognitionResult>()
         var avgT2 = 0L
         var avgT3 = 0L
         var avgT4 = 0L
 
-        for (result in faceDetectionResult) {
+        for (cropResult in faceCropResults) {
             // Get the embedding for the cropped face (query embedding)
-            val (croppedBitmap, boundingBox) = result
+            val (croppedBitmap, boundingBox) = cropResult
             val (embedding, t2) = measureTimedValue { faceNet.getFaceEmbedding(croppedBitmap) }
             avgT2 += t2.toLong(DurationUnit.MILLISECONDS)
             // Perform nearest-neighbor search
@@ -73,7 +81,7 @@ class ImageVectorUseCase(
                 measureTimedValue { imagesVectorDB.getNearestEmbeddingPersonName(embedding) }
             avgT3 += t3.toLong(DurationUnit.MILLISECONDS)
             if (recognitionResult == null) {
-                faceRecognitionResults.add(FaceRecognitionResult("Not recognized", boundingBox))
+                faceRecognitionResults.add(FaceRecognitionResult(croppedBitmap, NOT_RECON, boundingBox))
                 continue
             }
 
@@ -87,26 +95,26 @@ class ImageVectorUseCase(
             // else we conclude that the face does not match enough
             if (distance > 0.4) {
                 faceRecognitionResults.add(
-                    FaceRecognitionResult(recognitionResult.personName, boundingBox, spoofResult)
+                    FaceRecognitionResult(croppedBitmap, recognitionResult.personName, boundingBox, spoofResult)
                 )
             } else {
                 faceRecognitionResults.add(
-                    FaceRecognitionResult("Not recognized", boundingBox, spoofResult)
+                    FaceRecognitionResult(croppedBitmap, NOT_RECON, boundingBox, spoofResult)
                 )
             }
         }
         val metrics =
-            if (faceDetectionResult.isNotEmpty()) {
+            if (faceCropResults.isNotEmpty()) {
                 RecognitionMetrics(
                     timeFaceDetection = t1.toLong(DurationUnit.MILLISECONDS),
-                    timeFaceEmbedding = avgT2 / faceDetectionResult.size,
-                    timeVectorSearch = avgT3 / faceDetectionResult.size,
-                    timeFaceSpoofDetection = avgT4 / faceDetectionResult.size
+                    timeFaceEmbedding = avgT2 / faceCropResults.size,
+                    timeVectorSearch = avgT3 / faceCropResults.size,
+                    timeFaceSpoofDetection = avgT4 / faceCropResults.size
                 )
             } else {
                 null
             }
-
+        latestFaceRecognitionResult.value=faceRecognitionResults
         return Pair(metrics, faceRecognitionResults)
     }
 

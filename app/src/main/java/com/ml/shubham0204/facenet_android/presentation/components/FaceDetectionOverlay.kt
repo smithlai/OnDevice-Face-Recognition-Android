@@ -184,7 +184,7 @@ class FaceDetectionOverlay(
                 val predictions = ArrayList<Prediction>()
                 val (metrics, results) = viewModel.imageVectorUseCase.getNearestPersonName(frameBitmap)
                 results.forEach {
-                    (name, boundingBox, spoofResult) ->
+                    (copppedface, name, boundingBox, spoofResult) ->
                     val box = boundingBox.toRectF()
                     var personName = name
                     if (viewModel.getNumPeople().toInt() == 0) {

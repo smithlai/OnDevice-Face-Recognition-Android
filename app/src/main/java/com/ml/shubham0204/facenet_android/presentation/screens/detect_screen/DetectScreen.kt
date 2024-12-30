@@ -1,7 +1,11 @@
 package com.ml.shubham0204.facenet_android.presentation.screens.detect_screen
 
 import android.Manifest
+import android.app.Activity
+import android.content.Context
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.util.Log
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -46,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import com.ml.shubham0204.facenet_android.R
+import com.ml.shubham0204.facenet_android.domain.ImageVectorUseCase.Companion.NOT_RECON
 import com.ml.shubham0204.facenet_android.presentation.components.AppAlertDialog
 import com.ml.shubham0204.facenet_android.presentation.components.DelayedVisibility
 import com.ml.shubham0204.facenet_android.presentation.components.FaceDetectionOverlay
@@ -59,7 +64,7 @@ private lateinit var cameraPermissionLauncher: ManagedActivityResultLauncher<Str
 
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetectScreen(onOpenFaceListClick: (() -> Unit)) {
+fun DetectScreen(from_external: Boolean, onOpenFaceListClick: (() -> Unit)) {
     FaceNetAndroidTheme {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -97,21 +102,24 @@ fun DetectScreen(onOpenFaceListClick: (() -> Unit)) {
                 )
             }
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding)) { ScreenUI() }
+            Column(modifier = Modifier.padding(innerPadding)) { ScreenUI(from_external) }
         }
     }
 }
 
 @Composable
-private fun ScreenUI() {
+private fun ScreenUI(from_external:Boolean) {
     val viewModel: DetectScreenViewModel = koinViewModel()
+
     Box {
         Camera(viewModel)
         DelayedVisibility(viewModel.getNumPeople() > 0) {
             val metrics by remember{ viewModel.faceDetectionMetricsState }
+            val faceDetectionResults = viewModel.imageVectorUseCase.latestFaceRecognitionResult
+            val numPeople = viewModel.getNumPeople()
             Column {
                 Text(
-                    text = "Recognition on ${viewModel.getNumPeople()} face(s)",
+                    text = "Recognition on $numPeople face(s)",
                     color = Color.White,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
@@ -130,6 +138,20 @@ private fun ScreenUI() {
                         textAlign = TextAlign.Center
                     )
                 }
+                if (numPeople == 1L && from_external) {
+                    faceDetectionResults.value.getOrNull(0)?.takeIf {
+                        it.spoofResult?.isSpoof != true && it.personName != NOT_RECON
+                    }?.let { result ->
+                        val activity = LocalContext.current as? Activity
+                        activity?.apply {
+                            setResult(Activity.RESULT_OK, Intent().apply {
+                                putExtra("user_id", result.personName)
+                            })
+                            finish()
+                        } ?: Log.e("Error", "Context is not an Activity")
+                    }
+                }
+
             }
         }
         DelayedVisibility(viewModel.getNumPeople() == 0L) {
