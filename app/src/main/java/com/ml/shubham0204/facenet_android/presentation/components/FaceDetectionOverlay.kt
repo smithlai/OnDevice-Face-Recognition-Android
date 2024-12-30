@@ -213,14 +213,16 @@ class FaceDetectionOverlay(
 
         private val boxPaint =
             Paint().apply {
-                color = Color.parseColor("#4D90caf9")
-                style = Paint.Style.FILL
+                color = Color.BLUE
+                style = Paint.Style.STROKE
+                strokeWidth = 6f
             }
         private val textPaint =
             Paint().apply {
                 strokeWidth = 2.0f
                 textSize = 36f
                 color = Color.WHITE
+                textAlign = Paint.Align.CENTER // 文本居中对齐
             }
 
         override fun surfaceCreated(holder: SurfaceHolder) {}
@@ -232,7 +234,7 @@ class FaceDetectionOverlay(
         override fun onDraw(canvas: Canvas) {
             predictions.forEach {
                 canvas.drawRoundRect(it.bbox, 16f, 16f, boxPaint)
-                canvas.drawText(it.label, it.bbox.centerX(), it.bbox.centerY(), textPaint)
+                canvas.drawText(it.label, it.bbox.centerX(), it.bbox.top-10f, textPaint)
             }
         }
     }
