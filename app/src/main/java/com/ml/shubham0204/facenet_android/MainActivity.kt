@@ -7,9 +7,11 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.ml.shubham0204.facenet_android.presentation.screens.add_face.AddFaceScreen
 import com.ml.shubham0204.facenet_android.presentation.screens.detect_screen.DetectScreen
 import com.ml.shubham0204.facenet_android.presentation.screens.face_list.FaceListScreen
@@ -30,12 +32,26 @@ class MainActivity : ComponentActivity() {
                 enterTransition = { fadeIn() },
                 exitTransition = { fadeOut() }
             ) {
-                composable("add-face") { AddFaceScreen { navHostController.navigateUp() } }
-                composable("detect") { DetectScreen(startDestination !=null) { navHostController.navigate("face-list") } }
+                composable("add-face") { AddFaceScreen(0) { navHostController.navigateUp() } }
+                composable(
+                    route = "add-face/{personID}?",
+                    arguments = listOf(navArgument("personID") { type = NavType.StringType; nullable = true })
+                ) { backStackEntry ->
+                    val personID = backStackEntry.arguments?.getLong("personID")
+                    personID?.let {
+                        AddFaceScreen(personID = it){ navHostController.navigateUp() }
+                    }
+
+                }
+                composable("detect") { DetectScreen(startDestination !=null, add_face = false) { navHostController.navigate("face-list") } }
+                composable("takeface") { DetectScreen(startDestination !=null, add_face = true) { navHostController.navigate("face-list") } }
                 composable("face-list") {
                     FaceListScreen(
                         onNavigateBack = { navHostController.navigateUp() },
-                        onAddFaceClick = { navHostController.navigate("add-face") }
+                        onAddFaceClick = { navHostController.navigate("add-face") },
+                        onFaceItemClick = { personRecord ->
+                            navHostController.navigate("add-face/${personRecord.personID}")
+                        }
                     )
                 }
             }

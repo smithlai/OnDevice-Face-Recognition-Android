@@ -16,27 +16,28 @@ import org.koin.android.annotation.KoinViewModel
 
 @KoinViewModel
 class AddFaceScreenViewModel(
-    private val personUseCase: PersonUseCase,
-    private val imageVectorUseCase: ImageVectorUseCase
+    val personUseCase: PersonUseCase,
+    val imageVectorUseCase: ImageVectorUseCase
 ) : ViewModel() {
 
-    val personNameState: MutableState<String> = mutableStateOf("")
+    val personIdState: MutableState<Long> = mutableStateOf(0)
     val selectedImageURIs: MutableState<List<Uri>> = mutableStateOf(emptyList())
 
     val isProcessingImages: MutableState<Boolean> = mutableStateOf(false)
     val numImagesProcessed: MutableState<Int> = mutableIntStateOf(0)
 
-    fun addImages() {
+    fun updateImages() {
+        //todo : Remove All images first
         isProcessingImages.value = true
         CoroutineScope(Dispatchers.Default).launch {
             val id =
                 personUseCase.addPerson(
-                    personNameState.value,
+                    personIdState.value,
                     selectedImageURIs.value.size.toLong()
                 )
             selectedImageURIs.value.forEach {
                 imageVectorUseCase
-                    .addImage(id, personNameState.value, it)
+                    .addImage(id, it)
                     .onFailure {
                         val errorMessage = (it as AppException).errorCode.message
                         setProgressDialogText(errorMessage)

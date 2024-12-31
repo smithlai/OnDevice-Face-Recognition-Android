@@ -32,23 +32,25 @@ class ImageVectorUseCase(
     val latestFaceRecognitionResult = mutableStateOf<List<FaceRecognitionResult>>(emptyList())
     data class FaceRecognitionResult(
         val croppedFace:Bitmap,
-        val personName: String,
+        val personID: Long,
         val boundingBox: Rect,
         val spoofResult: FaceSpoofDetector.FaceSpoofResult? = null
     )
 
     // Add the person's image to the database
-    suspend fun addImage(personID: Long, personName: String, imageUri: Uri): Result<Boolean> {
+    suspend fun addImage(personID: Long, imageUri: Uri): Result<Boolean> {
         // Perform face-detection and get the cropped face as a Bitmap
         val faceDetectionResult = mediapipeFaceDetector.getCroppedFace(imageUri)
         if (faceDetectionResult.isSuccess) {
+            // Todo: Save BMP
+            val imagePath = imageUri.path!!
             // Get the embedding for the cropped face, and store it
             // in the database, along with `personId` and `personName`
             val embedding = faceNet.getFaceEmbedding(faceDetectionResult.getOrNull()!!)
             imagesVectorDB.addFaceImageRecord(
                 FaceImageRecord(
                     personID = personID,
-                    personName = personName,
+                    imagePath = imagePath,
                     faceEmbedding = embedding
                 )
             )
@@ -81,7 +83,7 @@ class ImageVectorUseCase(
                 measureTimedValue { imagesVectorDB.getNearestEmbeddingPersonName(embedding) }
             avgT3 += t3.toLong(DurationUnit.MILLISECONDS)
             if (recognitionResult == null) {
-                faceRecognitionResults.add(FaceRecognitionResult(croppedBitmap, NOT_RECON, boundingBox))
+                faceRecognitionResults.add(FaceRecognitionResult(croppedBitmap, 0, boundingBox))
                 continue
             }
 
@@ -95,11 +97,11 @@ class ImageVectorUseCase(
             // else we conclude that the face does not match enough
             if (distance > 0.4) {
                 faceRecognitionResults.add(
-                    FaceRecognitionResult(croppedBitmap, recognitionResult.personName, boundingBox, spoofResult)
+                    FaceRecognitionResult(croppedBitmap, recognitionResult.personID, boundingBox, spoofResult)
                 )
             } else {
                 faceRecognitionResults.add(
-                    FaceRecognitionResult(croppedBitmap, NOT_RECON, boundingBox, spoofResult)
+                    FaceRecognitionResult(croppedBitmap, 0, boundingBox, spoofResult)
                 )
             }
         }

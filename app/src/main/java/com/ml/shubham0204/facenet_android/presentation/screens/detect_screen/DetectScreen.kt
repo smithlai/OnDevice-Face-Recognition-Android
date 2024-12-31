@@ -64,7 +64,7 @@ private lateinit var cameraPermissionLauncher: ManagedActivityResultLauncher<Str
 
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetectScreen(from_external: Boolean, onOpenFaceListClick: (() -> Unit)) {
+fun DetectScreen(from_external: Boolean, add_face: Boolean,onOpenFaceListClick: (() -> Unit)) {
     FaceNetAndroidTheme {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -78,11 +78,15 @@ fun DetectScreen(from_external: Boolean, onOpenFaceListClick: (() -> Unit)) {
                         )
                     },
                     actions = {
-                        IconButton(onClick = onOpenFaceListClick) {
-                            Icon(
-                                imageVector = Icons.Default.Face,
-                                contentDescription = "Open Face List"
-                            )
+                        if (from_external && !add_face ){
+
+                        }else{
+                            IconButton(onClick = onOpenFaceListClick) {
+                                Icon(
+                                    imageVector = Icons.Default.Face,
+                                    contentDescription = "Open Face List"
+                                )
+                            }
                         }
                         IconButton(
                             onClick = {
@@ -102,13 +106,13 @@ fun DetectScreen(from_external: Boolean, onOpenFaceListClick: (() -> Unit)) {
                 )
             }
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding)) { ScreenUI(from_external) }
+            Column(modifier = Modifier.padding(innerPadding)) { ScreenUI(from_external, add_face) }
         }
     }
 }
 
 @Composable
-private fun ScreenUI(from_external:Boolean) {
+private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
     val viewModel: DetectScreenViewModel = koinViewModel()
 
     Box {
@@ -138,14 +142,14 @@ private fun ScreenUI(from_external:Boolean) {
                         textAlign = TextAlign.Center
                     )
                 }
-                if (numPeople == 1L && from_external) {
+                if (numPeople == 1L && from_external && !add_face) {
                     faceDetectionResults.value.getOrNull(0)?.takeIf {
-                        it.spoofResult?.isSpoof != true && it.personName != NOT_RECON
+                        it.spoofResult?.isSpoof != true && it.personID > 0
                     }?.let { result ->
                         val activity = LocalContext.current as? Activity
                         activity?.apply {
                             setResult(Activity.RESULT_OK, Intent().apply {
-                                putExtra("user_id", result.personName)
+                                putExtra("user_id", result.personID)
                             })
                             finish()
                         } ?: Log.e("Error", "Context is not an Activity")

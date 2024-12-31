@@ -6,6 +6,7 @@ import io.objectbox.annotation.HnswIndex
 import io.objectbox.annotation.Id
 import io.objectbox.annotation.Index
 
+
 @Entity
 data class FaceImageRecord(
     // primary-key of `FaceImageRecord`
@@ -13,8 +14,8 @@ data class FaceImageRecord(
 
     // personId is derived from `PersonRecord`
     @Index var personID: Long = 0,
-    var personName: String = "",
-
+//    var personName: String = "",
+    var imagePath: String,
 
     // the FaceNet model provides a 128-dimensional embedding
     // the FaceNet-512 model provides a 512-dimensional embedding
@@ -24,8 +25,10 @@ data class FaceImageRecord(
 @Entity
 data class PersonRecord(
     // primary-key
-    @Id var personID: Long = 0,
-    var personName: String = "",
+    @Id(assignable = true)
+    var personID: Long = 0,
+
+//    var personName: String = "",
 
     // number of images selected by the user
     // under the name of the person

@@ -1,6 +1,7 @@
 package com.ml.shubham0204.facenet_android.presentation.screens.face_list
 
 import android.text.format.DateUtils
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
@@ -31,9 +32,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.ml.shubham0204.facenet_android.data.PersonRecord
+import com.ml.shubham0204.facenet_android.domain.ImageVectorUseCase
 import com.ml.shubham0204.facenet_android.presentation.components.AppAlertDialog
 import com.ml.shubham0204.facenet_android.presentation.components.createAlertDialog
 import com.ml.shubham0204.facenet_android.presentation.theme.FaceNetAndroidTheme
@@ -41,7 +44,11 @@ import org.koin.androidx.compose.koinViewModel
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun FaceListScreen(onNavigateBack: (() -> Unit), onAddFaceClick: (() -> Unit)) {
+fun FaceListScreen(
+    onNavigateBack: (() -> Unit),
+    onAddFaceClick: (() -> Unit),
+    onFaceItemClick: (PersonRecord) -> Unit
+) {
     FaceNetAndroidTheme {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -68,7 +75,7 @@ fun FaceListScreen(onNavigateBack: (() -> Unit), onAddFaceClick: (() -> Unit)) {
         ) { innerPadding ->
             val viewModel: FaceListScreenViewModel = koinViewModel()
             Column(modifier = Modifier.padding(innerPadding)) {
-                ScreenUI(viewModel)
+                ScreenUI(viewModel, onFaceItemClick)
                 AppAlertDialog()
             }
         }
@@ -76,20 +83,58 @@ fun FaceListScreen(onNavigateBack: (() -> Unit), onAddFaceClick: (() -> Unit)) {
 }
 
 @Composable
-private fun ScreenUI(viewModel: FaceListScreenViewModel) {
+private fun ScreenUI(
+    viewModel: FaceListScreenViewModel,
+    onFaceItemClick: (PersonRecord) -> Unit // 传递 PersonRecord 参数的点击事件
+) {
     val faces by viewModel.personFlow.collectAsState(emptyList())
-    LazyColumn { items(faces) { FaceListItem(it) { viewModel.removeFace(it.personID) } } }
+    val firstResult: ImageVectorUseCase.FaceRecognitionResult? =
+        viewModel.imageVectorUseCase.latestFaceRecognitionResult.value.getOrNull(0)
+
+    // 單一圖片顯示區域
+    firstResult?.let { result ->
+        Image(
+            bitmap = result.croppedFace.asImageBitmap(),
+            contentDescription = null,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp)
+                .padding(8.dp)
+        )
+    }
+
+    // 分隔线
+    Spacer(modifier = Modifier.height(8.dp).fillMaxWidth().background(Color.LightGray))
+
+    // Face 列表
+    LazyColumn {
+        items(faces) { face ->
+            FaceListItem(
+                personRecord = face,
+                onRemoveFaceClick = { viewModel.removeFace(face.personID) },
+                onFaceClick = { onFaceItemClick(face) } // 动态传递当前 FaceItem
+            )
+        }
+    }
 }
 
 @Composable
-private fun FaceListItem(personRecord: PersonRecord, onRemoveFaceClick: (() -> Unit)) {
+private fun FaceListItem(
+    personRecord: PersonRecord,
+    onRemoveFaceClick: (() -> Unit),
+    onFaceClick: (() -> Unit) // 点击事件绑定
+) {
     Row(
-        modifier = Modifier.fillMaxWidth().background(Color.White).padding(12.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .clickable(onClick = onFaceClick) // 将点击事件绑定到 Row
+            .padding(12.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
             Text(
-                text = personRecord.personName,
+                text = personRecord.personID.toString(),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold
             )
@@ -102,18 +147,18 @@ private fun FaceListItem(personRecord: PersonRecord, onRemoveFaceClick: (() -> U
         }
         Icon(
             modifier =
-                Modifier.clickable {
-                    createAlertDialog(
-                        dialogTitle = "Remove person",
-                        dialogText =
-                            "Are you sure to remove this person from the database. The face for this person will not " +
-                                "be detected in realtime",
-                        dialogPositiveButtonText = "Remove",
-                        onPositiveButtonClick = onRemoveFaceClick,
-                        dialogNegativeButtonText = "Cancel",
-                        onNegativeButtonClick = {}
-                    )
-                },
+            Modifier.clickable {
+                createAlertDialog(
+                    dialogTitle = "Remove person",
+                    dialogText =
+                    "Are you sure to remove this person from the database? The face for this person will not " +
+                            "be detected in real-time.",
+                    dialogPositiveButtonText = "Remove",
+                    onPositiveButtonClick = onRemoveFaceClick,
+                    dialogNegativeButtonText = "Cancel",
+                    onNegativeButtonClick = {}
+                )
+            },
             imageVector = Icons.Default.Clear,
             contentDescription = "Remove face"
         )

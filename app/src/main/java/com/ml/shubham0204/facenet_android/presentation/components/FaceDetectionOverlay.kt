@@ -184,17 +184,17 @@ class FaceDetectionOverlay(
                 val predictions = ArrayList<Prediction>()
                 val (metrics, results) = viewModel.imageVectorUseCase.getNearestPersonName(frameBitmap)
                 results.forEach {
-                    (copppedface, name, boundingBox, spoofResult) ->
+                    (copppedface, person_id, boundingBox, spoofResult) ->
                     val box = boundingBox.toRectF()
-                    var personName = name
+                    var personId = person_id
                     if (viewModel.getNumPeople().toInt() == 0) {
-                        personName = ""
+                        personId = 0
                     }
                     if (spoofResult != null && spoofResult.isSpoof) {
-                        personName = "$personName (Spoof: ${spoofResult.score})"
+                        personId = 0
                     }
                     boundingBoxTransform.mapRect(box)
-                    predictions.add(Prediction(box, personName))
+                    predictions.add(Prediction(box, personId))
                 }
                 withContext(Dispatchers.Main) {
                     viewModel.faceDetectionMetricsState.value = metrics
@@ -206,7 +206,7 @@ class FaceDetectionOverlay(
             image.close()
         }
 
-    data class Prediction(var bbox: RectF, var label: String)
+    data class Prediction(var bbox: RectF, var person_id: Long)
 
     inner class BoundingBoxOverlay(context: Context) :
         SurfaceView(context), SurfaceHolder.Callback {
@@ -234,7 +234,7 @@ class FaceDetectionOverlay(
         override fun onDraw(canvas: Canvas) {
             predictions.forEach {
                 canvas.drawRoundRect(it.bbox, 16f, 16f, boxPaint)
-                canvas.drawText(it.label, it.bbox.centerX(), it.bbox.top-10f, textPaint)
+                canvas.drawText("ID:${it.person_id}", it.bbox.centerX(), it.bbox.top-10f, textPaint)
             }
         }
     }
