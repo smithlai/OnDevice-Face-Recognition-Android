@@ -32,7 +32,7 @@ data class PersonRecord(
 
     // number of images selected by the user
     // under the name of the person
-    var numImages: Long = 0,
+//    var numImages: Long = 0,
 
     // time when the record was added
     var addTime: Long = 0

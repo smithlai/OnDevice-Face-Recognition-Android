@@ -12,7 +12,6 @@ class PersonUseCase(private val personDB: PersonDB) {
         return personDB.addPerson(
             PersonRecord(
                 personID = persion_id,
-                numImages = numImages,
                 addTime = System.currentTimeMillis()
             )
         )
@@ -23,6 +22,10 @@ class PersonUseCase(private val personDB: PersonDB) {
     }
 
     fun getAll(): Flow<List<PersonRecord>> = personDB.getAll()
+
+    fun getPersonById(personID: Long): PersonRecord? {
+        return personDB.getPersonById(personID)
+    }
 
     fun getCount(): Long = personDB.getCount()
 }

@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -34,8 +35,8 @@ class MainActivity : ComponentActivity() {
             ) {
                 composable("add-face") { AddFaceScreen(0) { navHostController.navigateUp() } }
                 composable(
-                    route = "add-face/{personID}?",
-                    arguments = listOf(navArgument("personID") { type = NavType.StringType; nullable = true })
+                    route = "add-face/{personID}",
+                    arguments = listOf(navArgument("personID") { type = NavType.LongType; nullable = false })
                 ) { backStackEntry ->
                     val personID = backStackEntry.arguments?.getLong("personID")
                     personID?.let {

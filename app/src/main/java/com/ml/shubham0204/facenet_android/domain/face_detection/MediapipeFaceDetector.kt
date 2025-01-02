@@ -46,9 +46,6 @@ class MediapipeFaceDetector(private val context: Context) {
             imageInputStream.close()
 
             // Re-create an input-stream to reset its position
-            // InputStream returns false with markSupported(), hence we cannot
-            // reset its position
-            // Without recreating the inputStream, no exif-data is read
             imageInputStream =
                 context.contentResolver.openInputStream(imageUri)
                     ?: return@withContext Result.failure<Bitmap>(
@@ -69,16 +66,14 @@ class MediapipeFaceDetector(private val context: Context) {
                 }
             imageInputStream.close()
 
-            // We need exactly one face in the image, in other cases, return the
-            // necessary errors
+            // We need exactly one face in the image
             val faces = faceDetector.detect(BitmapImageBuilder(imageBitmap).build()).detections()
             if (faces.size > 1) {
                 return@withContext Result.failure<Bitmap>(AppException(ErrorCode.MULTIPLE_FACES))
             } else if (faces.size == 0) {
                 return@withContext Result.failure<Bitmap>(AppException(ErrorCode.NO_FACE))
             } else {
-                // Validate the bounding box and
-                // return the cropped face
+                // Validate the bounding box and return the cropped face
                 val rect = faces[0].boundingBox().toRect()
                 if (validateRect(imageBitmap, rect)) {
                     val croppedBitmap =

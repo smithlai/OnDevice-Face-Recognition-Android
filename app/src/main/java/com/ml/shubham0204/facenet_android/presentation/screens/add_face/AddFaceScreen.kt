@@ -1,5 +1,6 @@
 package com.ml.shubham0204.facenet_android.presentation.screens.add_face
 
+import android.net.Uri
 import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -32,6 +33,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -39,6 +41,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.ml.shubham0204.facenet_android.data.FaceImageRecord
 import com.ml.shubham0204.facenet_android.data.PersonRecord
 import com.ml.shubham0204.facenet_android.presentation.components.AppProgressDialog
 import com.ml.shubham0204.facenet_android.presentation.components.DelayedVisibility
@@ -91,26 +94,27 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
             }
             viewModel.selectedImageURIs.value = updatedUris
         }
-    var personName by remember { viewModel.personIdState }
-//    // Load data if personID is not null
-//    LaunchedEffect(personID) {
-//        personID?.let {
-//            val personRecord = viewModel.personUseCase.getAll()
-//                .firstOrNull { person -> person?.get(0)?.personID == it }
-//            personRecord?.let { record ->
-//                personName = record?.get(0)?.personID!! // Automatically fill the name
-//            }
-//        }
-//    }
+//    viewModel.personIdState.value = personID
+//    var pid by remember { viewModel.personIdState }
+
+
+    var showPersonID by remember { mutableStateOf(personID) }  // 用來追蹤輸入的 personID
+
+    LaunchedEffect(showPersonID) {
+        loadPersonData(showPersonID, viewModel)
+    }
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
         TextField(
             modifier = Modifier.fillMaxWidth(),
-            value = personName.toString(),
+            value = showPersonID.toString(),
             onValueChange = {  input ->
                 // 過濾只允許數字輸入
+
                 val filteredInput = input.filter { it.isDigit() }
-                personName = filteredInput.toLongOrNull() ?: 0L
+                val new_id = filteredInput.toLongOrNull() ?: 0L
+                showPersonID = new_id
+                loadPersonData(new_id, viewModel)
             },
             label = { Text(text = "Enter the person's ID") },
             singleLine = true,
@@ -122,18 +126,18 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             Button(
-                enabled = (personName > 0),
+                enabled = (showPersonID > 0),
                 onClick = {
                     pickVisualMediaLauncher.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                     )
                 }
             ) {
-                Icon(imageVector = Icons.Default.Photo, contentDescription = "Choose photos")
+                Icon(imageVector = Icons.Default.Photo, contentDescription = "Add photos")
                 Text(text = "Choose photos")
             }
             DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty()) {
-                Button(onClick = { viewModel.updateImages() },  enabled = personID > 0) { Text(text = "Update Images") }
+                Button(onClick = { viewModel.updateImages() },  enabled = showPersonID > 0) { Text(text = "Update Images") }
             }
         }
         DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty()) {
@@ -168,5 +172,29 @@ private fun ImageReadProgressDialog(viewModel: AddFaceScreenViewModel, onNavigat
             Toast.makeText(context, "Added to database", Toast.LENGTH_SHORT).show()
         }
         hideProgressDialog()
+    }
+}
+
+// 取得PersonRecord
+private fun loadPersonData(personID: Long, viewModel: AddFaceScreenViewModel) {
+    
+    viewModel.personUseCase.getPersonById(personID)?.let { personRecord ->
+        
+        viewModel.personRecordState.value = personRecord
+    } ?: run {
+        
+        viewModel.personRecordState.value = PersonRecord(personID)  // 若找不到則設為空記錄
+    }
+    // 加載與此 personID 相關的 FaceImageRecords 並更新
+    viewModel.imageVectorUseCase.getFaceImageRecordsByPersonID(personID)?.let { faceImageRecords ->
+        viewModel.faceImageRecord.value = faceImageRecords
+        val imagePaths = faceImageRecords.map { it.imagePath }
+        imagePaths.forEach { imagePath ->
+            Log.d("ImageVector", "Image Path: $imagePath")
+        }
+//        val updatedUris = viewModel.selectedImageURIs.value.toMutableList().apply {
+//            addAll(imagePaths.map { Uri.parse(it) })
+//        }
+        viewModel.selectedImageURIs.value = imagePaths.map { Uri.parse(it) }
     }
 }

@@ -1,5 +1,6 @@
 package com.ml.shubham0204.facenet_android.data
 
+import io.objectbox.kotlin.query
 import org.koin.core.annotation.Single
 
 @Single
@@ -32,4 +33,11 @@ class ImagesVectorDB {
             imagesBox.query(FaceImageRecord_.personID.equal(personID)).build().findIds().toList()
         )
     }
+
+    fun getFaceImageRecordsByPersonID(personID: Long): List<FaceImageRecord> {
+        return imagesBox.query {
+            equal(FaceImageRecord_.personID, personID) // 查詢條件
+        }.find() // 執行查詢並回傳結果
+    }
+
 }
