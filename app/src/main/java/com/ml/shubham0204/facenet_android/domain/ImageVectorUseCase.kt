@@ -13,7 +13,6 @@ import com.ml.shubham0204.facenet_android.data.RecognitionMetrics
 import com.ml.shubham0204.facenet_android.domain.embeddings.FaceNet
 import com.ml.shubham0204.facenet_android.domain.face_detection.FaceSpoofDetector
 import com.ml.shubham0204.facenet_android.domain.face_detection.MediapipeFaceDetector
-import com.ml.shubham0204.facenet_android.presentation.components.FaceDetectionOverlay
 import com.ml.shubham0204.facenet_android.presentation.components.setProgressDialogText
 import kotlin.math.pow
 import kotlin.math.sqrt
@@ -67,7 +66,7 @@ class ImageVectorUseCase(
         }
 
         // 建立以 PersonID 命名的資料夾
-        val personFolder = createPersonFolder(personID)
+        val personFolder = createPersonImageFolder(personID)
             ?: return Result.failure(Exception("Failed to create folder for PersonID: $personID"))
 
         // 定義儲存路徑
@@ -183,33 +182,46 @@ class ImageVectorUseCase(
     }
 
     // 統一管理 PersonImages 路徑
-    private fun getPersonFolder(personId: Long): File {
+
+    private fun getPersonImageFolder(personId: Long): File {
         return File(File(context.filesDir, IMAGE_DIR), personId.toString())
     }
 
+    // 統一管理 PersonImages 路徑
+    private fun getBaseCacheFolder(): File {
+        return File(context.cacheDir, CACHE_DIR)
+    }
     // 統一管理 PersonImagesCache 路徑
-    private fun getCacheFolder(personId: Long): File {
-        return File(File(context.cacheDir, CACHE_DIR), personId.toString())
+    private fun getPersonCacheFolder(personId: Long): File {
+        return File(getBaseCacheFolder(), personId.toString())
     }
 
-    fun createPersonFolder(personId: Long): File? {
-        val personFolder = getPersonFolder(personId)
+    fun createPersonImageFolder(personId: Long): File? {
+        val personFolder = getPersonImageFolder(personId)
         if (!personFolder.exists() && !personFolder.mkdirs()) {
             Log.e("CreateFolder", "Failed to create folder for PersonID: $personId")
             return null
         }
         return personFolder
     }
-    fun createCacheFolder(personId: Long): File? {
-        val cacheFolder = getCacheFolder(personId)
+    fun createBaseCacheFolder(): File? {
+        val cacheFolder = getBaseCacheFolder()
+        if (!cacheFolder.exists() && !cacheFolder.mkdirs()) {
+            Log.e("CreateFolder", "Failed to create base cache folder")
+            return null
+        }
+        return cacheFolder
+    }
+    fun createPersonCacheFolder(personId: Long): File? {
+        val cacheFolder = getPersonCacheFolder(personId)
         if (!cacheFolder.exists() && !cacheFolder.mkdirs()) {
             Log.e("CreateFolder", "Failed to create cache folder for PersonID: $personId")
             return null
         }
         return cacheFolder
     }
-    fun removePersonFolder(personId: Long) {
-        val personFolder = getPersonFolder(personId)
+    fun removePersonImageFolder(personId: Long) {
+        val personFolder = getPersonImageFolder(personId)
         if (personFolder.exists()) {
             val isDeleted = personFolder.deleteRecursively()
             if (!isDeleted) {
@@ -220,8 +232,8 @@ class ImageVectorUseCase(
         }
     }
 
-    fun removeCacheFolder(personId: Long) {
-        val cacheFolder = getCacheFolder(personId)
+    fun removePersonCacheFolder(personId: Long) {
+        val cacheFolder = getPersonCacheFolder(personId)
         if (cacheFolder.exists()) {
             val isDeleted = cacheFolder.deleteRecursively()
             if (!isDeleted) {

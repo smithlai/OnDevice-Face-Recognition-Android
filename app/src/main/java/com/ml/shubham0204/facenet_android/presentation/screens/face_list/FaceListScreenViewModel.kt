@@ -18,7 +18,7 @@ class FaceListScreenViewModel(
     fun removeFace(id: Long) {
         personUseCase.removePerson(id)
         imageVectorUseCase.removeImages(id)
-        imageVectorUseCase.removePersonFolder(id)
-        imageVectorUseCase.removeCacheFolder(id)
+        imageVectorUseCase.removePersonImageFolder(id)
+        imageVectorUseCase.removePersonCacheFolder(id)
     }
 }

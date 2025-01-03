@@ -1,5 +1,6 @@
 package com.ml.shubham0204.facenet_android.presentation.screens.add_face
 
+import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
 import android.widget.Toast
@@ -21,6 +22,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material3.Button
@@ -44,15 +46,14 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.ml.shubham0204.facenet_android.data.FaceImageRecord
 import com.ml.shubham0204.facenet_android.data.PersonRecord
 import com.ml.shubham0204.facenet_android.presentation.components.AppProgressDialog
 import com.ml.shubham0204.facenet_android.presentation.components.DelayedVisibility
 import com.ml.shubham0204.facenet_android.presentation.components.hideProgressDialog
 import com.ml.shubham0204.facenet_android.presentation.components.showProgressDialog
 import com.ml.shubham0204.facenet_android.presentation.theme.FaceNetAndroidTheme
-import kotlinx.coroutines.flow.firstOrNull
 import org.koin.androidx.compose.koinViewModel
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -91,33 +92,28 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.PickMultipleVisualMedia()
         ) {
-//            viewModel.selectedImageURIs.value = it
             val updatedUris = viewModel.selectedImageURIs.value.toMutableList().apply {
                 addAll(it)
             }
             viewModel.selectedImageURIs.value = updatedUris
         }
-//    viewModel.personIdState.value = personID
-//    var pid by remember { viewModel.personIdState }
 
-
-    var showPersonID by remember { mutableStateOf(personID) }  // 用來追蹤輸入的 personID
+    var showPersonID by remember { mutableStateOf(personID) }
 
     LaunchedEffect(showPersonID) {
         loadPersonData(showPersonID, viewModel)
+        resetUnselectedImages(viewModel)
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
         TextField(
             modifier = Modifier.fillMaxWidth(),
             value = showPersonID.toString(),
-            onValueChange = {  input ->
-                // 過濾只允許數字輸入
-
+            onValueChange = { input ->
                 val filteredInput = input.filter { it.isDigit() }
-                val new_id = filteredInput.toLongOrNull() ?: 0L
-                showPersonID = new_id
-                loadPersonData(new_id, viewModel)
+                val newId = filteredInput.toLongOrNull() ?: 0L
+                showPersonID = newId
+                loadPersonData(newId, viewModel)
             },
             label = { Text(text = "Enter the person's ID") },
             singleLine = true,
@@ -140,7 +136,9 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
                 Text(text = "Choose photos")
             }
             DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty()) {
-                Button(onClick = { viewModel.updateImages() },  enabled = showPersonID > 0) { Text(text = "Update Images") }
+                Button(onClick = { viewModel.updateImages() }, enabled = showPersonID > 0) {
+                    Text(text = "Update Images")
+                }
             }
         }
         DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty()) {
@@ -149,41 +147,70 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
                 style = MaterialTheme.typography.labelSmall
             )
         }
-        ImagesGrid(viewModel)
+        // 使用兩個 ImagesGrid，分別顯示 selectedImageURIs 和 unselectedImageURIs
+        Text(text = "Selected Images", style = MaterialTheme.typography.titleSmall)
+        ImagesGrid(viewModel, isUnselectedGrid = false)
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(text = "Unselected Images", style = MaterialTheme.typography.titleSmall)
+        ImagesGrid(viewModel, isUnselectedGrid = true)
+    }
+}
+
+private fun resetUnselectedImages(viewModel: AddFaceScreenViewModel) {
+    viewModel.unselectedImageURIs.value = mutableListOf() // 清空列表
+    viewModel.imageVectorUseCase.latestFaceRecognitionResult.value.getOrNull(0)?.let { result ->
+        val cacheFolder = viewModel.imageVectorUseCase.createBaseCacheFolder()
+        val cachedFile = File(cacheFolder, "cached_face.png")
+        result.croppedFace.compress(Bitmap.CompressFormat.PNG, 100, cachedFile.outputStream())
+        viewModel.unselectedImageURIs.value = mutableListOf(Uri.fromFile(cachedFile))
     }
 }
 
 @Composable
-private fun ImagesGrid(viewModel: AddFaceScreenViewModel) {
-    val uris by remember { viewModel.selectedImageURIs }
+private fun ImagesGrid(viewModel: AddFaceScreenViewModel, isUnselectedGrid: Boolean = false) {
+    val uris = if (isUnselectedGrid) viewModel.unselectedImageURIs.value else viewModel.selectedImageURIs.value
+
     LazyVerticalGrid(columns = GridCells.Fixed(2)) {
         items(uris) { uri ->
-            // 圖片容器
             Box(modifier = Modifier.padding(8.dp)) {
                 AsyncImage(
                     model = uri,
                     contentDescription = null,
                     modifier = Modifier.fillMaxWidth()
                 )
-                // 刪除按鈕 (小 X)
                 IconButton(
                     onClick = {
-                        // 刪除圖片
-                        val updatedUris = uris.toMutableList().apply { remove(uri) }
-                        viewModel.selectedImageURIs.value = updatedUris
+                        // 更新列表，將 URI 從一個列表移到另一個
+                        if (isUnselectedGrid) {
+                            viewModel.unselectedImageURIs.value = viewModel.unselectedImageURIs.value.toMutableList().apply {
+                                remove(uri)
+                            }
+                            viewModel.selectedImageURIs.value = viewModel.selectedImageURIs.value.toMutableList().apply {
+                                add(uri)
+                            }
+                        } else {
+                            viewModel.selectedImageURIs.value = viewModel.selectedImageURIs.value.toMutableList().apply {
+                                remove(uri)
+                            }
+                            viewModel.unselectedImageURIs.value = viewModel.unselectedImageURIs.value.toMutableList().apply {
+                                add(uri)
+                            }
+                        }
                     },
                     modifier = Modifier.align(Alignment.TopEnd)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Close,
-                        contentDescription = "Delete image",
-                        tint = MaterialTheme.colorScheme.error
+                        imageVector = if (isUnselectedGrid) Icons.Default.Add else Icons.Default.Close,
+                        contentDescription = if (isUnselectedGrid) "Add image" else "Remove image",
+                        tint = if (isUnselectedGrid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
                     )
                 }
             }
         }
     }
 }
+
+
 
 
 @Composable

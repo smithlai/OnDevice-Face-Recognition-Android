@@ -6,11 +6,9 @@ import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.ViewModel
 import com.ml.shubham0204.facenet_android.data.FaceImageRecord
 import com.ml.shubham0204.facenet_android.data.PersonRecord
-import com.ml.shubham0204.facenet_android.domain.AppException
 import com.ml.shubham0204.facenet_android.domain.ImageVectorUseCase
 import com.ml.shubham0204.facenet_android.domain.PersonUseCase
 import com.ml.shubham0204.facenet_android.presentation.components.setProgressDialogText
@@ -32,14 +30,14 @@ class AddFaceScreenViewModel(
     val faceImageRecord: MutableState<List<FaceImageRecord>?> = mutableStateOf(null)
 
     val selectedImageURIs: MutableState<List<Uri>> = mutableStateOf(emptyList())
-
+    val unselectedImageURIs: MutableState<List<Uri>> = mutableStateOf(emptyList())
     val isProcessingImages: MutableState<Boolean> = mutableStateOf(false)
     val numImagesProcessed: MutableState<Int> = mutableIntStateOf(0)
 
     fun updateImages() {
         isProcessingImages.value = true
         CoroutineScope(Dispatchers.Default).launch {
-            var cacheFolder: File? = null // 提前宣告 cacheFolder
+            var personCacheFolder: File? = null // 提前宣告 cacheFolder
             try {
 
                 val pr = personRecordState.value?.takeIf { it.personID > 0 }
@@ -55,25 +53,25 @@ class AddFaceScreenViewModel(
 
                 val personId = personRecordState.value?.personID!!
                 // 建立目標資料夾與快取資料夾
-                val personFolder = imageVectorUseCase.createPersonFolder(personId)
+                val personImageFolder = imageVectorUseCase.createPersonImageFolder(personId)
                     ?: throw Exception("Failed to create folder for PersonID: ${personId}")
 
-                cacheFolder = imageVectorUseCase.createCacheFolder(personId)
+                personCacheFolder = imageVectorUseCase.createPersonCacheFolder(personId)
 
                 // 備份現有圖片到 Cache 資料夾
-                personFolder.listFiles()?.forEach { file ->
-                    val cacheFile = File(cacheFolder, file.name)
+                personImageFolder.listFiles()?.forEach { file ->
+                    val cacheFile = File(personCacheFolder, file.name)
                     file.copyTo(cacheFile, overwrite = true)
                     Log.e("aaaa", "${file.path}->${cacheFile.path}, ${cacheFile.exists()}")
                     file.delete()
                 }
                 //先清空影像資料庫
                 imageVectorUseCase.removeImages(personId)
-                imageVectorUseCase.removePersonFolder(personId)
+                imageVectorUseCase.removePersonImageFolder(personId)
 
                 // 新圖片處理
                 selectedImageURIs.value.forEach { imageUri ->
-                    val (resolvedUri, isFromCache) = resolveUri(imageUri, personFolder, cacheFolder!!)
+                    val (resolvedUri, isFromCache) = resolveUri(imageUri, personImageFolder, personCacheFolder!!)
                     imageVectorUseCase
                         .addImage(personId, resolvedUri, isFromCache)
                         .onFailure {
@@ -95,7 +93,7 @@ class AddFaceScreenViewModel(
 
             } finally {
                 // 清理 Cache 資料夾
-                cacheFolder?.deleteRecursively()
+                personCacheFolder?.deleteRecursively()
                 isProcessingImages.value = false
             }
         }
@@ -104,17 +102,23 @@ class AddFaceScreenViewModel(
     /**
      * 將圖片 URI 解析為實際的圖片位置，若在 Person 資料夾中則改用 Cache 資料夾圖片。
      */
-    private fun resolveUri(imageUri: Uri, personFolder: File, cacheFolder: File): Pair<Uri, Boolean> {
+    private fun resolveUri(imageUri: Uri, personImageFolder: File, personCacheFolder: File): Pair<Uri, Boolean> {
         val sourceFile = File(imageUri.path ?: "")
-
-        return if (sourceFile.parentFile?.absolutePath == personFolder.absolutePath) {
-            val cachedFile = File(cacheFolder, sourceFile.name)
+        val baseCacheFolder = imageVectorUseCase.createBaseCacheFolder()
+        return if (sourceFile.parentFile?.absolutePath == personImageFolder.absolutePath) {
+            // 沿用原先已經切臉的圖片
+            // 因為圖片資料夾會先被清空，所以暫時使用備份的cache作為來源
+            val cachedFile = File(personCacheFolder, sourceFile.name)
             if (cachedFile.exists()) {
                 Pair(Uri.fromFile(cachedFile), true)
             } else {
+
                 Log.e("Fatal Error", "Should not BE!!!!")
                 Pair(imageUri, false)
             }
+        } else if (sourceFile.parentFile?.absolutePath == baseCacheFolder?.absolutePath){
+            // 位於cache資料夾，但並非該使用者，表示臉部應該是切過的。通常是即時拍照截圖。
+            Pair(imageUri, true)
         } else {
             Pair(imageUri, false)
         }
