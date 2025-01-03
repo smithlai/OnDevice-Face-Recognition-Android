@@ -7,6 +7,7 @@ import android.graphics.Rect
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
+import com.ml.shubham0204.facenet_android.BuildConfig
 import com.ml.shubham0204.facenet_android.data.FaceImageRecord
 import com.ml.shubham0204.facenet_android.data.ImagesVectorDB
 import com.ml.shubham0204.facenet_android.data.RecognitionMetrics
@@ -30,7 +31,6 @@ class ImageVectorUseCase(
     private val faceNet: FaceNet
 ) {
     companion object{
-        const val NOT_RECON = "Not recognized"
         const val IMAGE_DIR = "PersonImages"
         const val CACHE_DIR = "PersonImagesCache"
     }
@@ -132,7 +132,7 @@ class ImageVectorUseCase(
             val distance = cosineDistance(embedding, recognitionResult.faceEmbedding)
             // If the distance > 0.4, we recognize the person
             // else we conclude that the face does not match enough
-            if (distance > 0.4) {
+            if (distance > BuildConfig.FACE_DETECTION_DISTANCE) {
                 faceRecognitionResults.add(
                     FaceRecognitionResult(croppedBitmap, recognitionResult.personID, boundingBox, spoofResult)
                 )

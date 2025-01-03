@@ -42,6 +42,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -97,35 +98,57 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
             }
             viewModel.selectedImageURIs.value = updatedUris
         }
-
+    val isFixedPersonID = personID > 0
     var showPersonID by remember { mutableStateOf(personID) }
-
+    var showWarning by remember { mutableStateOf(false) } // 控制警告訊息
     LaunchedEffect(showPersonID) {
         loadPersonData(showPersonID, viewModel)
         resetUnselectedImages(viewModel)
     }
 
     Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-        TextField(
-            modifier = Modifier.fillMaxWidth(),
-            value = showPersonID.toString(),
-            onValueChange = { input ->
-                val filteredInput = input.filter { it.isDigit() }
-                val newId = filteredInput.toLongOrNull() ?: 0L
-                showPersonID = newId
-                loadPersonData(newId, viewModel)
-            },
-            label = { Text(text = "Enter the person's ID") },
-            singleLine = true,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-        )
+        if (isFixedPersonID) {
+            // Display the person ID as a non-editable Text
+            Text(
+                modifier = Modifier.fillMaxWidth(),
+                text = "Person ID: $showPersonID",
+                style = MaterialTheme.typography.bodyLarge
+            )
+        } else {
+            // Allow editing the person ID
+            TextField(
+                modifier = Modifier.fillMaxWidth(),
+                value = showPersonID.toString(),
+                onValueChange = { input ->
+                    val filteredInput = input.filter { it.isDigit() }
+                    val newId = filteredInput.toLongOrNull() ?: 0L
+                    showPersonID = newId
+                    // 檢查輸入的 ID 是否已存在
+                    val isDuplicate = viewModel.personUseCase.getPersonById(newId) != null
+                    showWarning = isDuplicate
+//                    if (!isDuplicate) {
+                        loadPersonData(newId, viewModel)
+//                    }
+                },
+                label = { Text(text = "Enter the person's ID") },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+            )
+            if (showWarning) {
+                Text(
+                    text = "Warning: Person ID already exists!",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(16.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             Button(
-                enabled = (showPersonID > 0),
+                enabled = (showPersonID > 0 && !showWarning),
                 onClick = {
                     pickVisualMediaLauncher.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
@@ -133,10 +156,10 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
                 }
             ) {
                 Icon(imageVector = Icons.Default.Photo, contentDescription = "Add photos")
-                Text(text = "Choose photos")
+                Text(text = "Add photos")
             }
-            DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty()) {
-                Button(onClick = { viewModel.updateImages() }, enabled = showPersonID > 0) {
+            DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty() && !showWarning) {
+                Button(onClick = { viewModel.updateImages() }, enabled = showPersonID > 0 && !showWarning) {
                     Text(text = "Update Images")
                 }
             }
@@ -172,11 +195,13 @@ private fun ImagesGrid(viewModel: AddFaceScreenViewModel, isUnselectedGrid: Bool
 
     LazyVerticalGrid(columns = GridCells.Fixed(2)) {
         items(uris) { uri ->
-            Box(modifier = Modifier.padding(8.dp)) {
+            Box(modifier = Modifier.padding(8.dp).fillMaxWidth()) {
                 AsyncImage(
                     model = uri,
                     contentDescription = null,
-                    modifier = Modifier.fillMaxWidth()
+//                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop // 確保影像充滿容器
                 )
                 IconButton(
                     onClick = {

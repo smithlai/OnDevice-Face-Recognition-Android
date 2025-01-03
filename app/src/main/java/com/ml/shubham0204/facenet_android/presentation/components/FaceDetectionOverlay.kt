@@ -187,14 +187,18 @@ class FaceDetectionOverlay(
                     (copppedface, person_id, boundingBox, spoofResult) ->
                     val box = boundingBox.toRectF()
                     var personId = person_id
-                    if (viewModel.getNumPeople().toInt() == 0) {
-                        personId = 0
-                    }
+                    var boxColor = Color.GRAY // Default color for unrecognized face
+
                     if (spoofResult != null && spoofResult.isSpoof) {
                         personId = 0
+                        boxColor = Color.RED // Red for spoof
+                    } else if (results.size > 1){
+                        boxColor = Color.YELLOW // Yellow for recognized face
+                    } else if (personId > 0) {
+                        boxColor = Color.GREEN // Green for recognized face
                     }
                     boundingBoxTransform.mapRect(box)
-                    predictions.add(Prediction(box, personId))
+                    predictions.add(Prediction(box, personId, boxColor))
                 }
                 withContext(Dispatchers.Main) {
                     viewModel.faceDetectionMetricsState.value = metrics
@@ -206,7 +210,7 @@ class FaceDetectionOverlay(
             image.close()
         }
 
-    data class Prediction(var bbox: RectF, var person_id: Long)
+    data class Prediction(var bbox: RectF, var person_id: Long, var boxColor: Int)
 
     inner class BoundingBoxOverlay(context: Context) :
         SurfaceView(context), SurfaceHolder.Callback {
@@ -233,6 +237,7 @@ class FaceDetectionOverlay(
 
         override fun onDraw(canvas: Canvas) {
             predictions.forEach {
+                boxPaint.color = it.boxColor
                 canvas.drawRoundRect(it.bbox, 16f, 16f, boxPaint)
                 canvas.drawText("ID:${it.person_id}", it.bbox.centerX(), it.bbox.top-10f, textPaint)
             }

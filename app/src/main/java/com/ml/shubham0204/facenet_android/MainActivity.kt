@@ -23,33 +23,36 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         // 取得 Intent 中的目標 Screen
-        val startDestination = intent.getStringExtra("startDestination")
+        val intent_startDestination = intent.getStringExtra("startDestination")
+        val intent_personID = intent.getLongExtra("personID", 0)
 
         setContent {
             val navHostController = rememberNavController()
             NavHost(
                 navController = navHostController,
-                startDestination = startDestination?:"detect",
+                startDestination = intent_startDestination?:"detect",
                 enterTransition = { fadeIn() },
                 exitTransition = { fadeOut() }
             ) {
-                composable("add-face") { AddFaceScreen(0) { navHostController.navigateUp() } }
+//                composable("add-face") { AddFaceScreen(0) { navHostController.navigateUp() } }
                 composable(
                     route = "add-face/{personID}",
-                    arguments = listOf(navArgument("personID") { type = NavType.LongType; nullable = false })
+                    arguments = listOf(navArgument("personID") { type = NavType.LongType; defaultValue=0 })
                 ) { backStackEntry ->
-                    val personID = backStackEntry.arguments?.getLong("personID")
-                    personID?.let {
-                        AddFaceScreen(personID = it){ navHostController.navigateUp() }
+
+                    if (intent_startDestination !=null && intent_personID > 0L){
+                        AddFaceScreen(personID = intent_personID){ navHostController.navigateUp() }
+                    } else {
+                        val personID = backStackEntry.arguments?.getLong("personID")?: 0
+                        AddFaceScreen(personID = personID){ navHostController.navigateUp() }
                     }
 
                 }
-                composable("detect") { DetectScreen(startDestination !=null, add_face = false) { navHostController.navigate("face-list") } }
-                composable("takeface") { DetectScreen(startDestination !=null, add_face = true) { navHostController.navigate("face-list") } }
+                composable("detect") { DetectScreen(intent_startDestination !=null, add_face = false) { navHostController.navigate("face-list") } }
                 composable("face-list") {
                     FaceListScreen(
                         onNavigateBack = { navHostController.navigateUp() },
-                        onAddFaceClick = { navHostController.navigate("add-face") },
+                        onAddFaceClick = { navHostController.navigate("add-face/0") },
                         onFaceItemClick = { personRecord ->
                             navHostController.navigate("add-face/${personRecord.personID}")
                         }

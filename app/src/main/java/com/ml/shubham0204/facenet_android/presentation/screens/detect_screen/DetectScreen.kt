@@ -5,6 +5,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.Bitmap
 import android.util.Log
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -13,6 +14,7 @@ import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
 
 import androidx.camera.core.ExperimentalGetImage
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +22,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -39,9 +42,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -50,7 +55,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import com.ml.shubham0204.facenet_android.R
-import com.ml.shubham0204.facenet_android.domain.ImageVectorUseCase.Companion.NOT_RECON
+import com.ml.shubham0204.facenet_android.domain.ImageVectorUseCase
 import com.ml.shubham0204.facenet_android.presentation.components.AppAlertDialog
 import com.ml.shubham0204.facenet_android.presentation.components.DelayedVisibility
 import com.ml.shubham0204.facenet_android.presentation.components.FaceDetectionOverlay
@@ -142,19 +147,59 @@ private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
                         textAlign = TextAlign.Center
                     )
                 }
-                if (numPeople == 1L && from_external && !add_face) {
-                    faceDetectionResults.value.getOrNull(0)?.takeIf {
-                        it.spoofResult?.isSpoof != true && it.personID > 0
-                    }?.let { result ->
-                        val activity = LocalContext.current as? Activity
-                        activity?.apply {
-                            setResult(Activity.RESULT_OK, Intent().apply {
-                                putExtra("user_id", result.personID)
-                            })
-                            finish()
-                        } ?: Log.e("Error", "Context is not an Activity")
+                val activity = LocalContext.current as? Activity
+                var lastPersonID: Long? by remember { mutableStateOf(null) }
+                var lastTimestamp: Long by remember { mutableStateOf(0L) }
+                val stableDetectionDelay: Long = 1000L // 1 seconds
+                var currentResult: ImageVectorUseCase.FaceRecognitionResult? by remember { mutableStateOf(null) }
+
+                if (from_external && !add_face && currentResult == null) { // 僅當對話框未顯示時執行背景邏輯
+                    if (faceDetectionResults.value.size == 1) {
+                        faceDetectionResults.value.getOrNull(0)?.takeIf {
+                            it.spoofResult?.isSpoof != true && it.personID > 0
+                        }?.let { result ->
+                            val currentTime = System.currentTimeMillis()
+                            if (result.personID == lastPersonID) {
+                                if (currentTime - lastTimestamp >= stableDetectionDelay) {
+                                    currentResult = result // 儲存結果並顯示對話框
+                                }
+                            } else {
+                                lastPersonID = result.personID
+                                lastTimestamp = currentTime
+                            }
+                        } ?: run {
+                            lastPersonID = null
+                            lastTimestamp = System.currentTimeMillis()
+                        }
+                    } else {
+                        lastPersonID = null
+                        lastTimestamp = System.currentTimeMillis()
                     }
                 }
+
+                // 確認對話框
+                currentResult?.let { savedResult ->
+                    showConfirmationDialog(
+                        context = LocalContext.current,
+                        faceRecognitionResult = savedResult, // 顯示裁剪後的人臉
+                        onConfirm = {
+                            // 用戶確認
+                            currentResult = null // 關閉對話框
+
+                            activity?.setResult(Activity.RESULT_OK, Intent().apply {
+                                putExtra("user_id", savedResult.personID)
+                            })
+                            activity?.finish()
+                        },
+                        onCancel = {
+                            currentResult = null // 關閉對話框
+                            lastPersonID = null
+                            lastTimestamp = System.currentTimeMillis()
+                        }
+                    )
+                }
+
+
 
             }
         }
@@ -174,7 +219,44 @@ private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
         AppAlertDialog()
     }
 }
-
+@Composable
+fun showConfirmationDialog(
+    context: Context,
+    faceRecognitionResult: ImageVectorUseCase.FaceRecognitionResult,
+    onConfirm: () -> Unit,
+    onCancel: () -> Unit
+) {
+    androidx.compose.material3.AlertDialog(
+        onDismissRequest = { /* Do nothing */ },
+        title = {
+            Text("確認身份")
+        },
+        text = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // Display the detected face
+                Image(
+                    bitmap = faceRecognitionResult.croppedFace.asImageBitmap(),
+                    contentDescription = "Detected Face",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .padding(8.dp)
+                )
+                Text("是否確認為本人？(${faceRecognitionResult.personID})")
+            }
+        },
+        confirmButton = {
+            Button(onClick = onConfirm) {
+                Text("是")
+            }
+        },
+        dismissButton = {
+            Button(onClick = onCancel) {
+                Text("否")
+            }
+        }
+    )
+}
 @OptIn(ExperimentalGetImage::class)
 @Composable
 private fun Camera(viewModel: DetectScreenViewModel) {
