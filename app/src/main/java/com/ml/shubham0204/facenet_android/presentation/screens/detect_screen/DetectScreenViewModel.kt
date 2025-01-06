@@ -14,6 +14,6 @@ class DetectScreenViewModel(
 ) : ViewModel() {
 
     val faceDetectionMetricsState = mutableStateOf<RecognitionMetrics?>(null)
-
+    val stableDetectionDelay: Long = 1000L // 1 seconds
     fun getNumPeople(): Long = personUseCase.getCount()
 }

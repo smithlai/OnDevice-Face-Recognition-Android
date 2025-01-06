@@ -24,6 +24,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cameraswitch
@@ -51,6 +53,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
@@ -64,12 +67,13 @@ import com.ml.shubham0204.facenet_android.presentation.theme.FaceNetAndroidTheme
 import org.koin.androidx.compose.koinViewModel
 
 private val cameraPermissionStatus = mutableStateOf(false)
-private val cameraFacing = mutableIntStateOf(CameraSelector.LENS_FACING_BACK)
+private val cameraFacing = mutableIntStateOf(CameraSelector.LENS_FACING_FRONT)
 private lateinit var cameraPermissionLauncher: ManagedActivityResultLauncher<String, Boolean>
 
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetectScreen(from_external: Boolean, add_face: Boolean,onOpenFaceListClick: (() -> Unit)) {
+
     FaceNetAndroidTheme {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -89,9 +93,11 @@ fun DetectScreen(from_external: Boolean, add_face: Boolean,onOpenFaceListClick: 
                             IconButton(onClick = onOpenFaceListClick) {
                                 Icon(
                                     imageVector = Icons.Default.Face,
-                                    contentDescription = "Open Face List"
+                                    contentDescription = "Open Face List",
+                                    modifier = Modifier.size(48.dp) // 放大 Icon
                                 )
                             }
+                            Spacer(modifier = Modifier.width(Dp(20f)))
                         }
                         IconButton(
                             onClick = {
@@ -104,7 +110,8 @@ fun DetectScreen(from_external: Boolean, add_face: Boolean,onOpenFaceListClick: 
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Cameraswitch,
-                                contentDescription = "Switch Camera"
+                                contentDescription = "Switch Camera",
+                                modifier = Modifier.size(48.dp) // 放大 Icon
                             )
                         }
                     }
@@ -128,7 +135,12 @@ private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
             val numPeople = viewModel.getNumPeople()
             Column {
                 Text(
-                    text = "Recognition on $numPeople face(s)",
+                    text = if (from_external && !add_face){
+                        "偵測臉部中，請靜止${viewModel.stableDetectionDelay}秒確保人物正確"
+                    }else {
+                        Log.e("aaaa", "$from_external $add_face")
+                        "Recognition on $numPeople face(s)"
+                    },
                     color = Color.White,
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
@@ -136,10 +148,12 @@ private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
                 Spacer(modifier = Modifier.weight(1f))
                 metrics?.let {
                     Text(
-                        text = "face detection: ${it.timeFaceDetection} ms" +
-                                "\nface embedding: ${it.timeFaceEmbedding} ms" +
-                                "\nvector search: ${it.timeVectorSearch} ms\n" +
-                                "spoof detection: ${it.timeFaceSpoofDetection} ms",
+                        text =
+                            "face detection: ${it.timeFaceDetection} ms" +
+                            "\nface embedding: ${it.timeFaceEmbedding} ms" +
+                            "\nvector search: ${it.timeVectorSearch} ms\n" +
+                            "spoof detection: ${it.timeFaceSpoofDetection} ms"
+                        ,
                         color = Color.White,
                         modifier = Modifier
                             .fillMaxWidth()
@@ -150,7 +164,7 @@ private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
                 val activity = LocalContext.current as? Activity
                 var lastPersonID: Long? by remember { mutableStateOf(null) }
                 var lastTimestamp: Long by remember { mutableStateOf(0L) }
-                val stableDetectionDelay: Long = 1000L // 1 seconds
+
                 var currentResult: ImageVectorUseCase.FaceRecognitionResult? by remember { mutableStateOf(null) }
 
                 if (from_external && !add_face && currentResult == null) { // 僅當對話框未顯示時執行背景邏輯
@@ -160,7 +174,7 @@ private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
                         }?.let { result ->
                             val currentTime = System.currentTimeMillis()
                             if (result.personID == lastPersonID) {
-                                if (currentTime - lastTimestamp >= stableDetectionDelay) {
+                                if (currentTime - lastTimestamp >= viewModel.stableDetectionDelay) {
                                     currentResult = result // 儲存結果並顯示對話框
                                 }
                             } else {
