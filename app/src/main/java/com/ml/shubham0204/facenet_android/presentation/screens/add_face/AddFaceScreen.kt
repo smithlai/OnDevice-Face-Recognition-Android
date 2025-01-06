@@ -102,7 +102,7 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
     var showPersonID by remember { mutableStateOf(personID) }
     var showWarning by remember { mutableStateOf(false) } // 控制警告訊息
     LaunchedEffect(showPersonID) {
-        loadPersonData(showPersonID, viewModel)
+        viewModel.loadPersonData(showPersonID)
         resetUnselectedImages(viewModel)
     }
 
@@ -127,7 +127,7 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
                     val isDuplicate = viewModel.personUseCase.getPersonById(newId) != null
                     showWarning = isDuplicate
 //                    if (!isDuplicate) {
-                        loadPersonData(newId, viewModel)
+                        viewModel.loadPersonData(newId)
 //                    }
                 },
                 label = { Text(text = "Enter the person's ID") },
@@ -255,26 +255,4 @@ private fun ImageReadProgressDialog(viewModel: AddFaceScreenViewModel, onNavigat
     }
 }
 
-// 取得PersonRecord
-private fun loadPersonData(personID: Long, viewModel: AddFaceScreenViewModel) {
-    
-    viewModel.personUseCase.getPersonById(personID)?.let { personRecord ->
-        
-        viewModel.personRecordState.value = personRecord
-    } ?: run {
-        
-        viewModel.personRecordState.value = PersonRecord(personID)  // 若找不到則設為空記錄
-    }
-    // 加載與此 personID 相關的 FaceImageRecords 並更新
-    viewModel.imageVectorUseCase.getFaceImageRecordsByPersonID(personID)?.let { faceImageRecords ->
-        viewModel.faceImageRecord.value = faceImageRecords
-        val imagePaths = faceImageRecords.map { it.imagePath }
-        imagePaths.forEach { imagePath ->
-            Log.d("ImageVector", "Image Path: $imagePath")
-        }
-//        val updatedUris = viewModel.selectedImageURIs.value.toMutableList().apply {
-//            addAll(imagePaths.map { Uri.parse(it) })
-//        }
-        viewModel.selectedImageURIs.value = imagePaths.map { Uri.parse(it) }
-    }
-}
+

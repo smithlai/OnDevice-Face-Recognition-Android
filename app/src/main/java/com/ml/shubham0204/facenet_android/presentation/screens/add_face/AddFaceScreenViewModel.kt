@@ -124,5 +124,28 @@ class AddFaceScreenViewModel(
         }
     }
 
+    // 取得PersonRecord
+    fun loadPersonData(personID: Long) {
+
+        personUseCase.getPersonById(personID)?.let { personRecord ->
+
+            personRecordState.value = personRecord
+        } ?: run {
+
+            personRecordState.value = PersonRecord(personID)  // 若找不到則設為空記錄
+        }
+        // 加載與此 personID 相關的 FaceImageRecords 並更新
+        imageVectorUseCase.getFaceImageRecordsByPersonID(personID)?.let { faceImageRecords ->
+            faceImageRecord.value = faceImageRecords
+            val imagePaths = faceImageRecords.map { it.imagePath }
+            imagePaths.forEach { imagePath ->
+                Log.d("ImageVector", "Image Path: $imagePath")
+            }
+//        val updatedUris = viewModel.selectedImageURIs.value.toMutableList().apply {
+//            addAll(imagePaths.map { Uri.parse(it) })
+//        }
+            selectedImageURIs.value = imagePaths.map { Uri.parse(it) }
+        }
+    }
 
 }
