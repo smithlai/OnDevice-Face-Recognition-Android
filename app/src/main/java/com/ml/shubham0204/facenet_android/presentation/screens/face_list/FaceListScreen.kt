@@ -1,6 +1,13 @@
 package com.ml.shubham0204.facenet_android.presentation.screens.face_list
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Environment
 import android.text.format.DateUtils
+import android.util.Log
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -11,13 +18,23 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowDownward
+import androidx.compose.material.icons.filled.ArrowUpward
 import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.CloudUpload
+import androidx.compose.material.icons.filled.FileDownload
+import androidx.compose.material.icons.filled.FileUpload
+import androidx.compose.material.icons.filled.InstallMobile
+import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
@@ -29,18 +46,40 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import androidx.documentfile.provider.DocumentFile
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.ml.shubham0204.facenet_android.R
 import com.ml.shubham0204.facenet_android.data.PersonRecord
 import com.ml.shubham0204.facenet_android.domain.ImageVectorUseCase
 import com.ml.shubham0204.facenet_android.presentation.components.AppAlertDialog
 import com.ml.shubham0204.facenet_android.presentation.components.createAlertDialog
+import com.ml.shubham0204.facenet_android.presentation.screens.add_face.AddFaceScreenViewModel
 import com.ml.shubham0204.facenet_android.presentation.theme.FaceNetAndroidTheme
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import org.koin.androidx.compose.koinViewModel
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.zip.ZipEntry
+import java.util.zip.ZipInputStream
+import java.util.zip.ZipOutputStream
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -49,6 +88,28 @@ fun FaceListScreen(
     onAddFaceClick: (() -> Unit),
     onFaceItemClick: (PersonRecord) -> Unit
 ) {
+    val context = LocalContext.current
+    val viewModel: FaceListScreenViewModel = koinViewModel()
+    val addFaceViewModel: AddFaceScreenViewModel = koinViewModel()
+
+    val importLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        uri?.let { selectedUri ->
+            importImages(context, addFaceViewModel, selectedUri)
+        }
+    }
+
+    val exportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree()
+    ) { uri ->
+        uri?.let { selectedUri ->
+            exportImages(context, selectedUri)
+        }
+    }
+
+    var isMenuExpanded by remember { mutableStateOf(false) } // 控制漢堡菜單顯示狀態
+
     FaceNetAndroidTheme {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -65,6 +126,47 @@ fun FaceListScreen(
                             )
                         }
                     },
+                    actions = {
+                        IconButton(onClick = { isMenuExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert, // 使用 Material Design 的 "更多" 圖標
+                                contentDescription = "Menu"
+                            )
+                        }
+
+                        // 下拉菜單
+                        DropdownMenu(
+                            expanded = isMenuExpanded,
+                            onDismissRequest = { isMenuExpanded = false }
+                        ) {
+                            DropdownMenuItem(
+                                text = { Text("Export Images") },
+                                onClick = {
+                                    isMenuExpanded = false
+                                    exportLauncher.launch(null)
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.CloudUpload,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                            DropdownMenuItem(
+                                text = { Text("Import Images") },
+                                onClick = {
+                                    isMenuExpanded = false
+                                    importLauncher.launch(arrayOf("application/zip"))
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.InstallMobile,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
+                        }
+                    }
                 )
             },
             floatingActionButton = {
@@ -73,10 +175,112 @@ fun FaceListScreen(
                 }
             }
         ) { innerPadding ->
-            val viewModel: FaceListScreenViewModel = koinViewModel()
             Column(modifier = Modifier.padding(innerPadding)) {
                 ScreenUI(viewModel, onFaceItemClick)
                 AppAlertDialog()
+            }
+        }
+    }
+}
+
+private fun exportImages(context: Context, selectedUri: Uri) {
+    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(Date())
+    CoroutineScope(Dispatchers.IO).launch {
+        val imageDir = File(context.filesDir, ImageVectorUseCase.IMAGE_DIR)
+
+        context.contentResolver.takePersistableUriPermission(
+            selectedUri,
+            Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+        )
+
+        // Use DocumentFile to navigate and create the file
+        val documentFile = DocumentFile.fromTreeUri(context, selectedUri)
+        documentFile?.let {
+            val exportFile = documentFile.createFile("application/zip", "ExportedImages_$timestamp.zip")
+
+            // Check if the file was created successfully
+            exportFile?.let { file ->
+                context.contentResolver.openOutputStream(file.uri)?.use { outputStream ->
+                    ZipOutputStream(outputStream).use { zipOut ->
+                        compressDirectory(imageDir, zipOut, imageDir.absolutePath)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun compressDirectory(dir: File, zipOut: ZipOutputStream, basePath: String) {
+    dir.listFiles()?.forEach { file ->
+        // 處理檔案路徑，並確保正確加入 ZIP 檔案
+        val entryName = file.absolutePath.removePrefix("$basePath/")
+
+        if (file.isDirectory) {
+            // 加入目錄到 ZIP，目錄結尾加上 '/'
+            val dirEntry = ZipEntry("$entryName/")
+            zipOut.putNextEntry(dirEntry)
+            zipOut.closeEntry()
+            // 遞迴加入目錄內的檔案
+            compressDirectory(file, zipOut, basePath)
+        } else {
+            // 加入檔案到 ZIP
+            FileInputStream(file).use { fis ->
+                val fileEntry = ZipEntry(entryName)
+                zipOut.putNextEntry(fileEntry)
+                fis.copyTo(zipOut)
+                zipOut.closeEntry()
+            }
+        }
+    }
+}
+
+// 修改 importImages 函数
+private fun importImages(context: Context, addFaceViewModel: AddFaceScreenViewModel, uri: Uri) {
+    CoroutineScope(Dispatchers.IO).launch {
+        val cacheDir = addFaceViewModel.imageVectorUseCase.createBaseCacheFolder()
+        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+
+            ZipInputStream(inputStream).use { zipIn ->
+                var entry: ZipEntry? = zipIn.nextEntry
+                while (entry != null) {
+                    val outFile = File(cacheDir, entry.name)
+
+                    if (entry.isDirectory) {
+                        // 如果是目錄，創建目錄
+                        if (!outFile.exists()) {
+                            outFile.mkdirs()
+                        }
+                    } else {
+                        // 如果是檔案，確保父目錄存在
+                        val parentDir = outFile.parentFile
+                        if (parentDir != null && !parentDir.exists()) {
+                            parentDir.mkdirs()
+                        }
+                        // 將檔案內容寫入
+                        outFile.outputStream().use { fos ->
+                            zipIn.copyTo(fos)
+                        }
+                    }
+
+                    zipIn.closeEntry()
+                    entry = zipIn.nextEntry
+                }
+            }
+
+        }
+        cacheDir?.listFiles()?.forEach { folder ->
+            val personId = folder.name.toLongOrNull()
+            if (personId != null) {
+                val imageUris = folder.listFiles()?.mapNotNull { file ->
+                    try {
+                        file.toUri()
+                    } catch (e: Exception) {
+                        null // Ignore invalid URIs
+                    }
+                } ?: emptyList()
+                addFaceViewModel.loadPersonData(personId)
+                addFaceViewModel.selectedImageURIs.value = imageUris
+                addFaceViewModel.updateImages()
             }
         }
     }

@@ -5,7 +5,7 @@
   "entities": [
     {
       "id": "1:7886976431312498614",
-      "lastPropertyId": "4:1044002615928688033",
+      "lastPropertyId": "6:591288726075822972",
       "name": "FaceImageRecord",
       "properties": [
         {
@@ -22,16 +22,16 @@
           "flags": 8
         },
         {
-          "id": "3:3883179078775366301",
-          "name": "personName",
-          "type": 9
-        },
-        {
           "id": "4:1044002615928688033",
           "name": "faceEmbedding",
           "indexId": "2:1210613089703466990",
           "type": 28,
           "flags": 8
+        },
+        {
+          "id": "6:591288726075822972",
+          "name": "imagePath",
+          "type": 9
         }
       ],
       "relations": []
@@ -45,17 +45,7 @@
           "id": "1:7617310022622233298",
           "name": "personID",
           "type": 6,
-          "flags": 1
-        },
-        {
-          "id": "2:4766740777198822324",
-          "name": "personName",
-          "type": 9
-        },
-        {
-          "id": "3:7309860671533523406",
-          "name": "numImages",
-          "type": 6
+          "flags": 129
         },
         {
           "id": "5:6214334937147888472",
@@ -75,7 +65,11 @@
   "retiredEntityUids": [],
   "retiredIndexUids": [],
   "retiredPropertyUids": [
-    1955098665124372966
+    1955098665124372966,
+    4130481851115233215,
+    3883179078775366301,
+    4766740777198822324,
+    7309860671533523406
   ],
   "retiredRelationUids": [],
   "version": 1

@@ -39,10 +39,8 @@ class AddFaceScreenViewModel(
         CoroutineScope(Dispatchers.Default).launch {
             var personCacheFolder: File? = null // 提前宣告 cacheFolder
             try {
-
                 val pr = personRecordState.value?.takeIf { it.personID > 0 }
                     ?: throw Exception("Invalid PersonRecord")
-
                 val existingPerson = personUseCase.getPersonById(pr.personID)
                 personRecordState.value = existingPerson?.takeIf { it.personID != null && pr.personID > 0 }
                     ?: run {
@@ -50,25 +48,21 @@ class AddFaceScreenViewModel(
                         personUseCase.getPersonById(pr.personID)
                     }
 
-
                 val personId = personRecordState.value?.personID!!
                 // 建立目標資料夾與快取資料夾
                 val personImageFolder = imageVectorUseCase.createPersonImageFolder(personId)
                     ?: throw Exception("Failed to create folder for PersonID: ${personId}")
 
                 personCacheFolder = imageVectorUseCase.createPersonCacheFolder(personId)
-
                 // 備份現有圖片到 Cache 資料夾
                 personImageFolder.listFiles()?.forEach { file ->
                     val cacheFile = File(personCacheFolder, file.name)
                     file.copyTo(cacheFile, overwrite = true)
-                    Log.e("aaaa", "${file.path}->${cacheFile.path}, ${cacheFile.exists()}")
                     file.delete()
                 }
                 //先清空影像資料庫
                 imageVectorUseCase.removeImages(personId)
                 imageVectorUseCase.removePersonImageFolder(personId)
-
                 // 新圖片處理
                 selectedImageURIs.value.forEach { imageUri ->
                     val (resolvedUri, isFromCache) = resolveUri(imageUri, personImageFolder, personCacheFolder!!)
@@ -116,8 +110,9 @@ class AddFaceScreenViewModel(
                 Log.e("Fatal Error", "Should not BE!!!!")
                 Pair(imageUri, false)
             }
-        } else if (sourceFile.parentFile?.absolutePath == baseCacheFolder?.absolutePath){
-            // 位於cache資料夾，但並非該使用者，表示臉部應該是切過的。通常是即時拍照截圖。
+        } else if (sourceFile.parentFile?.absolutePath!!.startsWith(baseCacheFolder?.absolutePath!!)){
+            // 位於cache資料夾，但並非該使用者，表示臉部應該是切過的。通常是即時拍照截圖。 cacheImage/face.png
+            // 位於cache資料夾，且位於個人資料夾中，表示可能是要匯入
             Pair(imageUri, true)
         } else {
             Pair(imageUri, false)
