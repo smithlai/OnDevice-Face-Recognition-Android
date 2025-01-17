@@ -1,3 +1,82 @@
+
+
+如何呼叫本APK
+In **MainActivity**:
+```Kotlin
+class MainActivity : AppCompatActivity() {
+    private val REQUEST_CODE_B_ACTIVITY = 1
+
+
+    // ================ For SDK35+ Intent Result====================
+    private var launchBActivity: ActivityResultLauncher<Intent>? = null
+
+    private fun setupActivityResultLauncher() {
+
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+
+            launchBActivity =
+                registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+
+                    if (result.resultCode == Activity.RESULT_OK) {
+
+                        val data = result.data
+                        val returnValue = data?.getLongExtra("user_id", 0)
+                        val byteArray = data?.getByteArrayExtra("login_face")
+                        val returnedBitmap = byteArray?.let { BitmapFactory.decodeByteArray(it, 0, byteArray.size) }
+                        Log.e("aaaa", "${returnedBitmap?.width}, ${returnedBitmap?.height}")
+
+                    }
+                }
+        }
+    }
+
+    // ================ For SDK34- Intent Result====================
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+
+        if (requestCode == REQUEST_CODE_B_ACTIVITY && resultCode == Activity.RESULT_OK) {
+            val returnValue = data?.getStringExtra("user_id")
+            Log.e("aaaaaaa:", "$returnValue")
+            val byteArray = data?.getByteArrayExtra("login_face")
+            val returnedBitmap = byteArray?.let { BitmapFactory.decodeByteArray(it, 0, byteArray.size) }
+
+        }
+    }
+
+    // ================ Call Activity For SDK34- and SDK 35+====================
+    private fun callBActivity() {
+        // 顯式 Intent 呼叫另一應用的 Activity
+        val intent = Intent().apply {
+            setClassName(
+                "com.ml.shubham0204.facenet_android",
+                ".MainActivity"
+            )
+            //            putExtra("startDestination", "face-list") // 管理員呼叫
+            putExtra("startDestination", "detect") // 使用者購物呼叫
+            //            putExtra("startDestination", "add-face/0") // 使用者登入後可自己增加資料呼叫
+            putExtra("personID", 23281L) // 指定初始 Screen
+        }
+
+        // 確保應用 B 存在並能處理該 Intent
+        if (intent.resolveActivity(packageManager) != null) {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+                // For SDK35+ Intent
+                Log.e("MainActivity", "Launching BActivity with intent: $intent")
+                launchBActivity?.launch(intent)
+
+            } else {
+                // For SDK34- Intent
+                startActivityForResult(intent, REQUEST_CODE_B_ACTIVITY)
+            }
+        } else {
+            Snackbar.make(binding.root, "無法找到應用 B", Snackbar.LENGTH_LONG).show()
+        }
+    }
+}
+
+```
+
 # On-Device Face Recognition In Android 
 
 > A simple Android app that performs on-device face recognition by comparing FaceNet embeddings against a vector database of user-given faces

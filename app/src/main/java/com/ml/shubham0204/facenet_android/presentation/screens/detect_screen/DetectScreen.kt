@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.util.Log
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -65,6 +66,7 @@ import com.ml.shubham0204.facenet_android.presentation.components.FaceDetectionO
 import com.ml.shubham0204.facenet_android.presentation.components.createAlertDialog
 import com.ml.shubham0204.facenet_android.presentation.theme.FaceNetAndroidTheme
 import org.koin.androidx.compose.koinViewModel
+import java.io.ByteArrayOutputStream
 
 private val cameraPermissionStatus = mutableStateOf(false)
 private val cameraFacing = mutableIntStateOf(CameraSelector.LENS_FACING_FRONT)
@@ -202,6 +204,9 @@ private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
 
                             activity?.setResult(Activity.RESULT_OK, Intent().apply {
                                 putExtra("user_id", savedResult.personID)
+                                val stream = ByteArrayOutputStream()
+                                savedResult.croppedFace.compress(Bitmap.CompressFormat.PNG, 100, stream)
+                                putExtra("login_face", stream.toByteArray())
                             })
                             activity?.finish()
                         },

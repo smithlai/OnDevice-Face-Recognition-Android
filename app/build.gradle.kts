@@ -23,6 +23,7 @@ android {
         // 設定維度，這裡可以設為 128 或 512
         buildConfigField("int", "FACE_EMBEDDING_DIMENSION", "512")
         buildConfigField("float", "FACE_DETECTION_DISTANCE", "0.75")
+        buildConfigField("long", "FACE_DETECTION_DELAY", "1000L")
     }
 
     signingConfigs {
