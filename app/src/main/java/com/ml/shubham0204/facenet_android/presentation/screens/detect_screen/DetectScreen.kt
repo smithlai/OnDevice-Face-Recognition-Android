@@ -29,7 +29,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Cameraswitch
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -74,13 +76,21 @@ private lateinit var cameraPermissionLauncher: ManagedActivityResultLauncher<Str
 
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DetectScreen(from_external: Boolean, add_face: Boolean,onOpenFaceListClick: (() -> Unit)) {
-
+fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: (() -> Unit),onOpenFaceListClick: (() -> Unit)) {
     FaceNetAndroidTheme {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             topBar = {
                 TopAppBar(
+                    navigationIcon = {
+                        val context = LocalContext.current
+                        IconButton(onClick = onNavigateBack) {
+                            Icon(
+                                imageVector = Icons.Default.Close,
+                                contentDescription = "Close App"
+                            )
+                        }
+                    },
                     colors = TopAppBarDefaults.topAppBarColors(),
                     title = {
                         Text(
@@ -89,44 +99,40 @@ fun DetectScreen(from_external: Boolean, add_face: Boolean,onOpenFaceListClick: 
                         )
                     },
                     actions = {
-                        if (from_external && !add_face ){
-
-                        }else{
-                            IconButton(onClick = onOpenFaceListClick) {
-                                Icon(
-                                    imageVector = Icons.Default.Face,
-                                    contentDescription = "Open Face List",
-                                    modifier = Modifier.size(48.dp) // 放大 Icon
-                                )
-                            }
-                            Spacer(modifier = Modifier.width(Dp(20f)))
-                        }
-                        IconButton(
-                            onClick = {
-                                if (cameraFacing.intValue == CameraSelector.LENS_FACING_BACK) {
-                                    cameraFacing.intValue = CameraSelector.LENS_FACING_FRONT
-                                } else {
-                                    cameraFacing.intValue = CameraSelector.LENS_FACING_BACK
-                                }
-                            }
-                        ) {
+                        IconButton(onClick = onOpenFaceListClick) {
                             Icon(
-                                imageVector = Icons.Default.Cameraswitch,
-                                contentDescription = "Switch Camera",
+                                imageVector = Icons.Default.Face,
+                                contentDescription = "Open Face List",
                                 modifier = Modifier.size(48.dp) // 放大 Icon
                             )
                         }
+                        Spacer(modifier = Modifier.width(Dp(20f)))
+//                        IconButton(
+//                            onClick = {
+//                                if (cameraFacing.intValue == CameraSelector.LENS_FACING_BACK) {
+//                                    cameraFacing.intValue = CameraSelector.LENS_FACING_FRONT
+//                                } else {
+//                                    cameraFacing.intValue = CameraSelector.LENS_FACING_BACK
+//                                }
+//                            }
+//                        ) {
+//                            Icon(
+//                                imageVector = Icons.Default.Cameraswitch,
+//                                contentDescription = "Switch Camera",
+//                                modifier = Modifier.size(48.dp) // 放大 Icon
+//                            )
+//                        }
                     }
                 )
             }
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding)) { ScreenUI(from_external, add_face) }
+            Column(modifier = Modifier.padding(innerPadding)) { ScreenUI(from_external, adding_user) }
         }
     }
 }
 
 @Composable
-private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
+private fun ScreenUI(from_external:Boolean, adding_user:Boolean) {
     val viewModel: DetectScreenViewModel = koinViewModel()
 
     Box {
@@ -137,10 +143,13 @@ private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
             val numPeople = viewModel.getNumPeople()
             Column {
                 Text(
-                    text = if (from_external && !add_face){
-                        "偵測臉部中，請靜止${viewModel.stableDetectionDelay}秒確保人物正確"
+                    text = if (from_external){
+                        if (adding_user) {
+                            "臉部拍照中，按下上方笑臉圖案截圖"
+                        }else{
+                            "偵測臉部中，請靜止${viewModel.stableDetectionDelay}秒確保人物正確"
+                        }
                     }else {
-                        Log.e("aaaa", "$from_external $add_face")
                         "Recognition on $numPeople face(s)"
                     },
                     color = Color.White,
@@ -169,7 +178,8 @@ private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
 
                 var currentResult: ImageVectorUseCase.FaceRecognitionResult? by remember { mutableStateOf(null) }
 
-                if (from_external && !add_face && currentResult == null) { // 僅當對話框未顯示時執行背景邏輯
+                // 僅當對話框未顯示，以及非拍照加臉模式時執行邏輯
+                if (from_external && !adding_user && currentResult == null) {
                     if (faceDetectionResults.value.size == 1) {
                         faceDetectionResults.value.getOrNull(0)?.takeIf {
                             it.spoofResult?.isSpoof != true && it.personID > 0
@@ -178,6 +188,7 @@ private fun ScreenUI(from_external:Boolean, add_face:Boolean) {
                             if (result.personID == lastPersonID) {
                                 if (currentTime - lastTimestamp >= viewModel.stableDetectionDelay) {
                                     currentResult = result // 儲存結果並顯示對話框
+                                    //Log.e("aaaa", "from_external:$from_external, adding_user:$adding_user")
                                 }
                             } else {
                                 lastPersonID = result.personID

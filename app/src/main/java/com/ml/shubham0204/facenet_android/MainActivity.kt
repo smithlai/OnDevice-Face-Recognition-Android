@@ -1,5 +1,6 @@
 package com.ml.shubham0204.facenet_android
 
+import android.app.Activity
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
@@ -34,7 +35,8 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         val intent_startDestination = intent.getStringExtra("startDestination")
         val intent_personID = intent.getLongExtra("personID", 0)
-
+//        val intent_startDestination = "intent-add-face"
+//        val intent_personID = 0L
         setContent {
             val navHostController = rememberNavController()
             NavHost(
@@ -44,20 +46,38 @@ class MainActivity : ComponentActivity() {
                 exitTransition = { fadeOut() }
             ) {
                 composable(
+                    route = "intent-add-face",
+//                    arguments = listOf(navArgument("personID") { type = NavType.LongType; defaultValue = 0 })
+                ) { backStackEntry ->
+                    if (intent_startDestination != null) {
+                        DetectScreen(intent_startDestination != null, adding_user = true,
+                            onNavigateBack = {
+                                this@MainActivity.finish()
+                             },
+                            onOpenFaceListClick = {
+                                if (intent_personID > 0L) {
+                                    navHostController.navigate("add-face/$intent_personID")
+                                }else {
+                                    navHostController.navigate("face-list")
+                                }
+                            }
+                        )
+                    }
+                }
+                composable(
                     route = "add-face/{personID}",
                     arguments = listOf(navArgument("personID") { type = NavType.LongType; defaultValue = 0 })
                 ) { backStackEntry ->
-                    if (intent_startDestination != null && intent_personID > 0L) {
-                        AddFaceScreen(personID = intent_personID) { navHostController.navigateUp() }
-                    } else {
-                        val personID = backStackEntry.arguments?.getLong("personID") ?: 0
-                        AddFaceScreen(personID = personID) { navHostController.navigateUp() }
-                    }
+                    val personID = backStackEntry.arguments?.getLong("personID") ?: 0
+                    AddFaceScreen(personID = personID) { navHostController.navigateUp() }
                 }
                 composable("detect") {
-                    DetectScreen(intent_startDestination != null, add_face = false) {
-                        navHostController.navigate("face-list")
-                    }
+                    DetectScreen(intent_startDestination != null, adding_user = false,
+                        onNavigateBack = {
+                            this@MainActivity.finish()
+                        },
+                        onOpenFaceListClick = {navHostController.navigate("face-list")}
+                    )
                 }
                 composable("face-list") {
                     FaceListScreen(

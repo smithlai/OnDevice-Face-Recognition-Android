@@ -181,7 +181,9 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
 
 private fun resetUnselectedImages(viewModel: AddFaceScreenViewModel) {
     viewModel.unselectedImageURIs.value = mutableListOf() // 清空列表
-    viewModel.imageVectorUseCase.latestFaceRecognitionResult.value.getOrNull(0)?.let { result ->
+    viewModel.imageVectorUseCase.latestFaceRecognitionResult.value.getOrNull(0)?.takeIf {
+        it.spoofResult?.isSpoof == false
+    }?.let { result ->
         val cacheFolder = viewModel.imageVectorUseCase.createBaseCacheFolder()
         val cachedFile = File(cacheFolder, "cached_face.png")
         result.croppedFace.compress(Bitmap.CompressFormat.PNG, 100, cachedFile.outputStream())

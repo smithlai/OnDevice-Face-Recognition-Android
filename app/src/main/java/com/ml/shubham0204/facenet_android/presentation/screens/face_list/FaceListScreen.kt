@@ -296,7 +296,9 @@ private fun ScreenUI(
         viewModel.imageVectorUseCase.latestFaceRecognitionResult.value.getOrNull(0)
 
     // 單一圖片顯示區域
-    firstResult?.let { result ->
+    firstResult?.takeIf { result ->
+        result.spoofResult?.isSpoof == false
+    }?.let { result ->
         Image(
             bitmap = result.croppedFace.asImageBitmap(),
             contentDescription = null,
@@ -316,7 +318,9 @@ private fun ScreenUI(
             FaceListItem(
                 personRecord = face,
                 onRemoveFaceClick = { viewModel.removeFace(face.personID) },
-                onFaceClick = { onFaceItemClick(face) } // 动态传递当前 FaceItem
+                onFaceClick = {
+                    onFaceItemClick(face)
+                }
             )
         }
     }

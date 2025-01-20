@@ -46,16 +46,17 @@ class MainActivity : AppCompatActivity() {
 
     // ================ Call Activity For SDK34- and SDK 35+====================
     private fun callBActivity() {
-        // 顯式 Intent 呼叫另一應用的 Activity
         val intent = Intent().apply {
-            setClassName(
-                "com.ml.shubham0204.facenet_android",
-                ".MainActivity"
-            )
-            //            putExtra("startDestination", "face-list") // 管理員呼叫
-            putExtra("startDestination", "detect") // 使用者購物呼叫
-            //            putExtra("startDestination", "add-face/0") // 使用者登入後可自己增加資料呼叫
-            putExtra("personID", 23281L) // 指定初始 Screen
+            setClassName("com.ml.shubham0204.facenet_android", "com.ml.shubham0204.facenet_android.MainActivity")
+
+//            Example 1: detect mode
+//            putExtra("startDestination", "detect")
+
+//            Example 2: add face
+            putExtra("startDestination", "intent-add-face")
+//            putExtra("personID", 0L) // admin模式
+            putExtra("personID", 23281L) // 指定使用者模式
+
         }
 
         // 確保應用 B 存在並能處理該 Intent
