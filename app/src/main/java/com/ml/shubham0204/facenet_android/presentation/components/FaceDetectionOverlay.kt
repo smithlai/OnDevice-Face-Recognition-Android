@@ -8,10 +8,14 @@ import android.graphics.Color
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
+import android.hardware.camera2.CameraCharacteristics
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.widget.FrameLayout
+import androidx.annotation.OptIn
+import androidx.camera.camera2.interop.Camera2CameraInfo
+import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -48,7 +52,7 @@ class FaceDetectionOverlay(
 
     private lateinit var frameBitmap: Bitmap
     private var isProcessing = false
-    private var cameraFacing: Int = CameraSelector.LENS_FACING_BACK
+    private var cameraFacing: Int = CameraSelector.LENS_FACING_FRONT
     private lateinit var boundingBoxOverlay: BoundingBoxOverlay
     private lateinit var previewView: PreviewView
 
@@ -69,36 +73,53 @@ class FaceDetectionOverlay(
         val cameraProviderFuture = ProcessCameraProvider.getInstance(context)
         val previewView = PreviewView(context)
         val executor = ContextCompat.getMainExecutor(context)
-        cameraProviderFuture.addListener(
-            {
-                val cameraProvider = cameraProviderFuture.get()
-                val preview =
-                    Preview.Builder().build().also {
-                        it.setSurfaceProvider(previewView.surfaceProvider)
-                    }
-                val cameraSelector =
-                    CameraSelector.Builder().requireLensFacing(cameraFacing).build()
-                val frameAnalyzer =
-                    ImageAnalysis.Builder()
-                        .setTargetAspectRatio(AspectRatio.RATIO_16_9)
-                        .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
-                        .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
-                        .build()
-                frameAnalyzer.setAnalyzer(Executors.newSingleThreadExecutor(), analyzer)
-                cameraProvider.unbindAll()
+
+        cameraProviderFuture.addListener({
+            val cameraProvider = cameraProviderFuture.get()
+
+            val availableCameras = cameraProvider.availableCameraInfos
+            val cameraSelector = if (availableCameras.any { it.lensFacing == cameraFacing }) {
+                // 如果指定的 cameraFacing 可用
+                CameraSelector.Builder().requireLensFacing(cameraFacing).build()
+            } else {
+                // 否则 fallback 到第一个可用的相机
+                Log.w("Camera", "Requested camera facing not available, falling back to the first available camera.")
+                CameraSelector.Builder().addCameraFilter {
+                    listOf(availableCameras.first()) // 使用第一个可用的相机
+                }.build()
+            }
+
+            val preview = Preview.Builder().build().also {
+                it.setSurfaceProvider(previewView.surfaceProvider)
+            }
+
+            val frameAnalyzer = ImageAnalysis.Builder()
+                .setTargetAspectRatio(AspectRatio.RATIO_16_9)
+                .setBackpressureStrategy(ImageAnalysis.STRATEGY_KEEP_ONLY_LATEST)
+                .setOutputImageFormat(ImageAnalysis.OUTPUT_IMAGE_FORMAT_RGBA_8888)
+                .build()
+
+            frameAnalyzer.setAnalyzer(Executors.newSingleThreadExecutor(), analyzer)
+
+            cameraProvider.unbindAll()
+
+            try {
                 cameraProvider.bindToLifecycle(
                     lifecycleOwner,
                     cameraSelector,
                     preview,
                     frameAnalyzer
                 )
-            },
-            executor
-        )
+            } catch (e: Exception) {
+                Log.e("Camera", "Failed to bind camera: ${e.message}")
+            }
+        }, executor)
+
         if (childCount == 2) {
             removeView(this.previewView)
             removeView(this.boundingBoxOverlay)
         }
+
         this.previewView = previewView
         addView(this.previewView)
 
@@ -193,7 +214,7 @@ class FaceDetectionOverlay(
                         personId = 0
                         boxColor = Color.RED // Red for spoof
                     } else if (results.size > 1){
-                        boxColor = Color.YELLOW // Yellow for recognized face
+                        boxColor = Color.YELLOW // Yellow for multi faces
                     } else if (personId > 0) {
                         boxColor = Color.GREEN // Green for recognized face
                     }

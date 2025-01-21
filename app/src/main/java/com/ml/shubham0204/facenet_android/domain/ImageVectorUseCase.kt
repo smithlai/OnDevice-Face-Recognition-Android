@@ -119,27 +119,28 @@ class ImageVectorUseCase(
             val (recognitionResult, t3) =
                 measureTimedValue { imagesVectorDB.getNearestEmbeddingPersonName(embedding) }
             avgT3 += t3.toLong(DurationUnit.MILLISECONDS)
-            if (recognitionResult == null) {
-                faceRecognitionResults.add(FaceRecognitionResult(croppedBitmap, 0, boundingBox))
-                continue
-            }
 
             val spoofResult = faceSpoofDetector.detectSpoof(frameBitmap, boundingBox)
             avgT4 += spoofResult.timeMillis
 
-            // Calculate cosine similarity between the nearest-neighbor
-            // and the query embedding
-            val distance = cosineDistance(embedding, recognitionResult.faceEmbedding)
-            // If the distance > 0.4, we recognize the person
-            // else we conclude that the face does not match enough
-            if (distance > BuildConfig.FACE_DETECTION_DISTANCE) {
-                faceRecognitionResults.add(
-                    FaceRecognitionResult(croppedBitmap, recognitionResult.personID, boundingBox, spoofResult)
-                )
-            } else {
-                faceRecognitionResults.add(
-                    FaceRecognitionResult(croppedBitmap, 0, boundingBox, spoofResult)
-                )
+            if (recognitionResult == null) {
+                faceRecognitionResults.add(FaceRecognitionResult(croppedBitmap, 0, boundingBox, spoofResult))
+                //continue
+            }else{
+                // Calculate cosine similarity between the nearest-neighbor
+                // and the query embedding
+                val distance = cosineDistance(embedding, recognitionResult.faceEmbedding)
+                // If the distance > 0.4, we recognize the person
+                // else we conclude that the face does not match enough
+                if (distance > BuildConfig.FACE_DETECTION_DISTANCE) {
+                    faceRecognitionResults.add(
+                        FaceRecognitionResult(croppedBitmap, recognitionResult.personID, boundingBox, spoofResult)
+                    )
+                } else {
+                    faceRecognitionResults.add(
+                        FaceRecognitionResult(croppedBitmap, 0, boundingBox, spoofResult)
+                    )
+                }
             }
         }
         val metrics =
