@@ -182,20 +182,30 @@ class FaceDetectionOverlay(
                 )
 
             if (!isBoundingBoxTransformedInitialized) {
+
+                val displayMetrics = context.resources.displayMetrics
+                val screenWidth = displayMetrics.widthPixels.toFloat()
+                val screenHeight = displayMetrics.heightPixels.toFloat()
+                val topAppBarHeight = screenHeight - overlayHeight
                 boundingBoxTransform = Matrix()
                 boundingBoxTransform.apply {
                     setScale(
-                        overlayWidth / frameBitmap.width.toFloat(),
-                        overlayHeight / frameBitmap.height.toFloat()
+                        //overlayWidth / frameBitmap.width.toFloat(),
+                        //overlayHeight / frameBitmap.height.toFloat()
+                        screenWidth / frameBitmap.width.toFloat(),
+                        screenHeight / frameBitmap.height.toFloat()
                     )
+                    postTranslate(0f, -topAppBarHeight)
                     if (cameraFacing == CameraSelector.LENS_FACING_FRONT) {
                         // Mirror the bounding box coordinates
                         // for front-facing camera
                         postScale(
                             -1f,
                             1f,
-                            overlayWidth.toFloat() / 2.0f,
-                            overlayHeight.toFloat() / 2.0f
+                            // overlayWidth.toFloat() / 2.0f,
+                            // overlayHeight.toFloat() / 2.0f
+                            screenWidth.toFloat() / 2.0f,
+                            screenHeight.toFloat() / 2.0f
                         )
                     }
                 }
@@ -257,6 +267,11 @@ class FaceDetectionOverlay(
         override fun surfaceDestroyed(holder: SurfaceHolder) {}
 
         override fun onDraw(canvas: Canvas) {
+//            canvas.drawRect(0f, 0f, overlayWidth.toFloat(), overlayHeight.toFloat(), Paint().apply {
+//                color = Color.RED
+//                style = Paint.Style.STROKE
+//                strokeWidth = 8f // Debug overlay
+//            })
             predictions.forEach {
                 boxPaint.color = it.boxColor
                 canvas.drawRoundRect(it.bbox, 16f, 16f, boxPaint)

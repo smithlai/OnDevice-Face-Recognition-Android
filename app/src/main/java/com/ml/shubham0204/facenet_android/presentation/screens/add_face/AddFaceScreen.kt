@@ -12,14 +12,21 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.foundation.lazy.grid.rememberLazyGridState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -78,7 +85,11 @@ fun AddFaceScreen(personID: Long, onNavigateBack: (() -> Unit)) {
                 )
             }
         ) { innerPadding ->
-            Column(modifier = Modifier.padding(innerPadding)) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+            ) {
                 val viewModel: AddFaceScreenViewModel = koinViewModel()
                 ScreenUI(viewModel, personID)
                 ImageReadProgressDialog(viewModel, onNavigateBack)
@@ -100,82 +111,168 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
         }
     val isFixedPersonID = personID > 0
     var showPersonID by remember { mutableStateOf(personID) }
-    var showWarning by remember { mutableStateOf(false) } // 控制警告訊息
+    var showWarning by remember { mutableStateOf(false) }
+
     LaunchedEffect(showPersonID) {
         viewModel.loadPersonData(showPersonID)
         resetUnselectedImages(viewModel)
     }
 
-    Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)) {
-        if (isFixedPersonID) {
-            // Display the person ID as a non-editable Text
-            Text(
-                modifier = Modifier.fillMaxWidth(),
-                text = "Person ID: $showPersonID",
-                style = MaterialTheme.typography.bodyLarge
-            )
-        } else {
-            // Allow editing the person ID
-            TextField(
-                modifier = Modifier.fillMaxWidth(),
-                value = showPersonID.toString(),
-                onValueChange = { input ->
-                    val filteredInput = input.filter { it.isDigit() }
-                    val newId = filteredInput.toLongOrNull() ?: 0L
-                    showPersonID = newId
-                    // 檢查輸入的 ID 是否已存在
-                    val isDuplicate = viewModel.personUseCase.getPersonById(newId) != null
-                    showWarning = isDuplicate
-//                    if (!isDuplicate) {
-                        viewModel.loadPersonData(newId)
-//                    }
-                },
-                label = { Text(text = "Enter the person's ID") },
-                singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
-            )
-            if (showWarning) {
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        item {
+            if (isFixedPersonID) {
                 Text(
-                    text = "Warning: Person ID already exists!",
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodyMedium
+                    modifier = Modifier.fillMaxWidth(),
+                    text = "Person ID: $showPersonID",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            } else {
+                TextField(
+                    modifier = Modifier.fillMaxWidth(),
+                    value = showPersonID.toString(),
+                    onValueChange = { input ->
+                        val filteredInput = input.filter { it.isDigit() }
+                        val newId = filteredInput.toLongOrNull() ?: 0L
+                        showPersonID = newId
+                        val isDuplicate = viewModel.personUseCase.getPersonById(newId) != null
+                        showWarning = isDuplicate
+                    },
+                    label = { Text(text = "Enter the person's ID") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                )
+
+                if (showWarning) {
+                    Text(
+                        text = "Warning: Person ID already exists!",
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
+
+        item {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+            ) {
+                Button(
+                    enabled = (showPersonID > 0 && !showWarning),
+                    onClick = {
+                        pickVisualMediaLauncher.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }
+                ) {
+                    Icon(imageVector = Icons.Default.Photo, contentDescription = "Add photos")
+                    Text(text = "From Media")
+                }
+                DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty() && !showWarning) {
+                    Button(onClick = { viewModel.updateImages() }, enabled = showPersonID > 0 && !showWarning) {
+                        Text(text = "Update User")
+                    }
+                }
+            }
+        }
+
+        item {
+            DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty()) {
+                Text(
+                    text = "${viewModel.selectedImageURIs.value.size} image(s) selected",
+                    style = MaterialTheme.typography.labelSmall
                 )
             }
         }
-        Spacer(modifier = Modifier.height(16.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-        ) {
-            Button(
-                enabled = (showPersonID > 0 && !showWarning),
-                onClick = {
-                    pickVisualMediaLauncher.launch(
-                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                    )
-                }
-            ) {
-                Icon(imageVector = Icons.Default.Photo, contentDescription = "Add photos")
-                Text(text = "Add photos")
-            }
-            DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty() && !showWarning) {
-                Button(onClick = { viewModel.updateImages() }, enabled = showPersonID > 0 && !showWarning) {
-                    Text(text = "Update Images")
-                }
-            }
+
+        item {
+            Text(text = "Selected Images", style = MaterialTheme.typography.headlineSmall)
         }
-        DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty()) {
-            Text(
-                text = "${viewModel.selectedImageURIs.value.size} image(s) selected",
-                style = MaterialTheme.typography.labelSmall
+
+        item {
+            ImagesGridFixed(
+                uris = viewModel.selectedImageURIs.value,
+                onImageAction = { uri ->
+                    viewModel.selectedImageURIs.value = viewModel.selectedImageURIs.value.toMutableList().apply {
+                        remove(uri)
+                    }
+                    viewModel.unselectedImageURIs.value = viewModel.unselectedImageURIs.value.toMutableList().apply {
+                        add(uri)
+                    }
+                },
+                isUnselectedGrid = false
             )
         }
-        // 使用兩個 ImagesGrid，分別顯示 selectedImageURIs 和 unselectedImageURIs
-        Text(text = "Selected Images", style = MaterialTheme.typography.titleSmall)
-        ImagesGrid(viewModel, isUnselectedGrid = false)
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(text = "Unselected Images", style = MaterialTheme.typography.titleSmall)
-        ImagesGrid(viewModel, isUnselectedGrid = true)
+
+        item {
+            Text(text = "Unselected Images", style = MaterialTheme.typography.headlineSmall)
+        }
+
+        item {
+            ImagesGridFixed(
+                uris = viewModel.unselectedImageURIs.value,
+                onImageAction = { uri ->
+                    viewModel.unselectedImageURIs.value = viewModel.unselectedImageURIs.value.toMutableList().apply {
+                        remove(uri)
+                    }
+                    viewModel.selectedImageURIs.value = viewModel.selectedImageURIs.value.toMutableList().apply {
+                        add(uri)
+                    }
+                },
+                isUnselectedGrid = true
+            )
+        }
+    }
+}
+
+@Composable
+private fun ImagesGridFixed(
+    uris: List<Uri>,
+    onImageAction: (Uri) -> Unit,
+    isUnselectedGrid: Boolean
+) {
+    val gridState = rememberLazyGridState()
+
+    LazyVerticalGrid(
+        columns = GridCells.Adaptive(150.dp),
+        state = gridState,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .heightIn(min = 100.dp, max = 200.dp) // 設定最小和最大高度
+    ) {
+        items(uris) { uri ->
+            Box(
+                modifier = Modifier
+                    .padding(4.dp)
+                    .aspectRatio(1f)
+                    .fillMaxWidth()
+            ) {
+                AsyncImage(
+                    model = uri,
+                    contentDescription = null,
+                    modifier = Modifier.fillMaxSize(),
+                    contentScale = ContentScale.Crop
+                )
+                IconButton(
+                    onClick = { onImageAction(uri) },
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .size(32.dp)
+                ) {
+                    Icon(
+                        imageVector = if (isUnselectedGrid) Icons.Default.Add else Icons.Default.Close,
+                        contentDescription = if (isUnselectedGrid) "Add image" else "Remove image",
+                        tint = if (isUnselectedGrid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -190,55 +287,6 @@ private fun resetUnselectedImages(viewModel: AddFaceScreenViewModel) {
         viewModel.unselectedImageURIs.value = mutableListOf(Uri.fromFile(cachedFile))
     }
 }
-
-@Composable
-private fun ImagesGrid(viewModel: AddFaceScreenViewModel, isUnselectedGrid: Boolean = false) {
-    val uris = if (isUnselectedGrid) viewModel.unselectedImageURIs.value else viewModel.selectedImageURIs.value
-
-    LazyVerticalGrid(columns = GridCells.Fixed(2)) {
-        items(uris) { uri ->
-            Box(modifier = Modifier.padding(8.dp).fillMaxWidth()) {
-                AsyncImage(
-                    model = uri,
-                    contentDescription = null,
-//                    modifier = Modifier.fillMaxWidth()
-                    modifier = Modifier.fillMaxSize(),
-                    contentScale = ContentScale.Crop // 確保影像充滿容器
-                )
-                IconButton(
-                    onClick = {
-                        // 更新列表，將 URI 從一個列表移到另一個
-                        if (isUnselectedGrid) {
-                            viewModel.unselectedImageURIs.value = viewModel.unselectedImageURIs.value.toMutableList().apply {
-                                remove(uri)
-                            }
-                            viewModel.selectedImageURIs.value = viewModel.selectedImageURIs.value.toMutableList().apply {
-                                add(uri)
-                            }
-                        } else {
-                            viewModel.selectedImageURIs.value = viewModel.selectedImageURIs.value.toMutableList().apply {
-                                remove(uri)
-                            }
-                            viewModel.unselectedImageURIs.value = viewModel.unselectedImageURIs.value.toMutableList().apply {
-                                add(uri)
-                            }
-                        }
-                    },
-                    modifier = Modifier.align(Alignment.TopEnd)
-                ) {
-                    Icon(
-                        imageVector = if (isUnselectedGrid) Icons.Default.Add else Icons.Default.Close,
-                        contentDescription = if (isUnselectedGrid) "Add image" else "Remove image",
-                        tint = if (isUnselectedGrid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                    )
-                }
-            }
-        }
-    }
-}
-
-
-
 
 @Composable
 private fun ImageReadProgressDialog(viewModel: AddFaceScreenViewModel, onNavigateBack: () -> Unit) {
