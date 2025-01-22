@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,7 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -35,6 +37,7 @@ import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -50,6 +53,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
@@ -262,17 +266,29 @@ private fun ImagesGridFixed(
                     modifier = Modifier.fillMaxSize(),
                     contentScale = ContentScale.Crop
                 )
+
                 IconButton(
                     onClick = { onImageAction(uri) },
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .size(32.dp)
                 ) {
-                    Icon(
-                        imageVector = if (isUnselectedGrid) Icons.Default.Add else Icons.Default.Close,
-                        contentDescription = if (isUnselectedGrid) "Add image" else "Remove image",
-                        tint = if (isUnselectedGrid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
-                    )
+                    Box(
+                        modifier = Modifier
+                            .size(48.dp) // 確保背景大小與 Icon 尺寸匹配
+                            .background(
+                                color = Color.Black.copy(alpha = 0.7f), // 半透明背景色
+                                shape = CircleShape // 圓形背景
+                            ),
+                        contentAlignment = Alignment.Center // 將 Icon 置於背景中央
+                    ) {
+                        Icon(
+                            imageVector = if (isUnselectedGrid) Icons.Filled.Add else Icons.Filled.Close,
+                            contentDescription = if (isUnselectedGrid) "Add image" else "Remove image",
+                            tint = if (isUnselectedGrid) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error
+                        )
+                    }
+
                 }
             }
         }

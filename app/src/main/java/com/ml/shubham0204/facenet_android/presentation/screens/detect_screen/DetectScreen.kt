@@ -20,7 +20,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -56,6 +58,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -93,35 +96,63 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
                     },
                     colors = TopAppBarDefaults.topAppBarColors(),
                     title = {
-                        Text(
-                            text = stringResource(id = R.string.app_name),
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                    },
-                    actions = {
-                        IconButton(onClick = onOpenFaceListClick) {
-                            Icon(
-                                imageVector = Icons.Default.Face,
-                                contentDescription = "Open Face List",
-                                modifier = Modifier.size(48.dp) // 放大 Icon
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth() // 填滿整個可用寬度
+                                .fillMaxHeight(), // 填滿整個可用高度
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            // Text 靠左，佔用固定空間
+                            Text(
+                                text = stringResource(id = R.string.app_name),
+                                style = MaterialTheme.typography.headlineSmall,
+//                                maxLines = 1,
+//                                overflow = TextOverflow.Ellipsis,
+//                                modifier = Modifier.weight(1f, fill = false) // 固定寬度，不撐滿
                             )
+
+                            // IconButton 居中，佔用剩餘空間
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f) // 佔用剩餘空間
+                                    .fillMaxHeight(),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                IconButton(onClick = onOpenFaceListClick) {
+                                    Icon(
+                                        imageVector = Icons.Default.Face,
+                                        contentDescription = "Open Face List",
+                                        modifier = Modifier.size(48.dp) // 放大 Icon
+                                    )
+                                }
+                            }
                         }
-                        Spacer(modifier = Modifier.width(Dp(20f)))
-//                        IconButton(
-//                            onClick = {
-//                                if (cameraFacing.intValue == CameraSelector.LENS_FACING_BACK) {
-//                                    cameraFacing.intValue = CameraSelector.LENS_FACING_FRONT
-//                                } else {
-//                                    cameraFacing.intValue = CameraSelector.LENS_FACING_BACK
-//                                }
-//                            }
-//                        ) {
+                    },
+
+                    actions = {
+//                        IconButton(onClick = onOpenFaceListClick) {
 //                            Icon(
-//                                imageVector = Icons.Default.Cameraswitch,
-//                                contentDescription = "Switch Camera",
+//                                imageVector = Icons.Default.Face,
+//                                contentDescription = "Open Face List",
 //                                modifier = Modifier.size(48.dp) // 放大 Icon
 //                            )
 //                        }
+//                        Spacer(modifier = Modifier.width(Dp(20f)))
+////                        IconButton(
+////                            onClick = {
+////                                if (cameraFacing.intValue == CameraSelector.LENS_FACING_BACK) {
+////                                    cameraFacing.intValue = CameraSelector.LENS_FACING_FRONT
+////                                } else {
+////                                    cameraFacing.intValue = CameraSelector.LENS_FACING_BACK
+////                                }
+////                            }
+////                        ) {
+////                            Icon(
+////                                imageVector = Icons.Default.Cameraswitch,
+////                                contentDescription = "Switch Camera",
+////                                modifier = Modifier.size(48.dp) // 放大 Icon
+////                            )
+////                        }
                     }
                 )
             }
