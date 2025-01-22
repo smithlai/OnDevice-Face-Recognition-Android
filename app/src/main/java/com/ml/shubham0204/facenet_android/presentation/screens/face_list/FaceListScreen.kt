@@ -11,6 +11,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -117,7 +118,7 @@ fun FaceListScreen(
         }
     }
 
-    var isMenuExpanded by remember { mutableStateOf(false) } // 控制漢堡菜單顯示狀態
+    var isMenuExpanded by remember { mutableStateOf(false) }
 
     FaceNetAndroidTheme {
         Scaffold(
@@ -138,7 +139,7 @@ fun FaceListScreen(
                     actions = {
                         IconButton(onClick = { isMenuExpanded = true }) {
                             Icon(
-                                imageVector = Icons.Default.MoreVert, // 使用 Material Design 的 "更多" 圖標
+                                imageVector = Icons.Default.MoreVert,
                                 contentDescription = "Menu"
                             )
                         }
@@ -186,10 +187,10 @@ fun FaceListScreen(
         ) { innerPadding ->
             Column(modifier = Modifier.padding(innerPadding)) {
                 ScreenUI(viewModel, onFaceItemClick)
-                AppAlertDialog()
+                    AppAlertDialog()
+                }
             }
         }
-    }
 }
 
 private fun exportImages(context: Context, selectedUri: Uri) {
@@ -298,38 +299,47 @@ private fun importImages(context: Context, addFaceViewModel: AddFaceScreenViewMo
 @Composable
 private fun ScreenUI(
     viewModel: FaceListScreenViewModel,
-    onFaceItemClick: (PersonRecord) -> Unit // 传递 PersonRecord 参数的点击事件
+    onFaceItemClick: (PersonRecord) -> Unit
 ) {
     val faces by viewModel.personFlow.collectAsState(emptyList())
     val firstResult: ImageVectorUseCase.FaceRecognitionResult? =
         viewModel.imageVectorUseCase.latestFaceRecognitionResult.value.getOrNull(0)
 
-    // 單一圖片顯示區域
-    firstResult?.takeIf { result ->
-        result.spoofResult?.isSpoof == false
-    }?.let { result ->
-        Image(
-            bitmap = result.croppedFace.asImageBitmap(),
-            contentDescription = null,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(200.dp)
-                .padding(8.dp)
-        )
-    }
+    LazyColumn(
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // 預覽圖片
+        firstResult?.takeIf { result ->
+            result.spoofResult?.isSpoof == false
+        }?.let { result ->
+            item {
+                Image(
+                    bitmap = result.croppedFace.asImageBitmap(),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(200.dp)
+                        .padding(8.dp)
+                )
+            }
+        }
 
-    // 分隔线
-    Spacer(modifier = Modifier.height(8.dp).fillMaxWidth().background(Color.LightGray))
+        // 分隔線
+        item {
+            Spacer(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .background(Color.LightGray)
+            )
+        }
 
-    // Face 列表
-    LazyColumn {
+        // Face 列表
         items(faces) { face ->
             FaceListItem(
                 personRecord = face,
                 onRemoveFaceClick = { viewModel.removeFace(face.personID) },
-                onFaceClick = {
-                    onFaceItemClick(face)
-                },
+                onFaceClick = { onFaceItemClick(face) },
                 getFaceImageRecordsByPersonID = viewModel.imageVectorUseCase::getFaceImageRecordsByPersonID
             )
         }
@@ -350,14 +360,14 @@ private fun FaceListItem(
         faceImageRecords.value = getFaceImageRecordsByPersonID(personRecord.personID)
     }
 
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
             .background(Color.White)
             .clickable(onClick = onFaceClick) // 将点击事件绑定到 Row
             .padding(12.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
+            verticalAlignment = Alignment.CenterVertically
+        ) {
         // 縮圖或預設圖標
         if (faceImageRecords.value?.isNotEmpty() == true) {
             val firstImagePath = faceImageRecords.value?.firstOrNull()?.imagePath
@@ -387,21 +397,21 @@ private fun FaceListItem(
 
         // 信息文本
         Column(modifier = Modifier.fillMaxWidth().weight(1f)) {
-            Text(
+                Text(
                 text = personRecord.personID.toString(),
                 style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.Bold
-            )
+                )
             Spacer(modifier = Modifier.height(4.dp))
-            Text(
+                Text(
                 text = DateUtils.getRelativeTimeSpanString(personRecord.addTime).toString(),
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.DarkGray
-            )
-        }
+                )
+            }
 
         // 刪除按鈕
-        Icon(
+                Icon(
             modifier =
             Modifier.clickable {
                 createAlertDialog(
@@ -419,5 +429,5 @@ private fun FaceListItem(
             contentDescription = "Remove face"
         )
         Spacer(modifier = Modifier.width(2.dp))
-    }
+            }
 }
