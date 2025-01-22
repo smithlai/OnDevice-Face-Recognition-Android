@@ -13,7 +13,8 @@ class DetectScreenViewModel(
     val personUseCase: PersonUseCase,
     val imageVectorUseCase: ImageVectorUseCase
 ) : ViewModel() {
-
+    var detectionScreenElapse = mutableStateOf(0L)
+    var validFaceElapse = mutableStateOf(0L)
     val faceDetectionMetricsState = mutableStateOf<RecognitionMetrics?>(null)
     val stableDetectionDelay: Long = BuildConfig.FACE_DETECTION_DELAY // 1 seconds
     fun getNumPeople(): Long = personUseCase.getCount()

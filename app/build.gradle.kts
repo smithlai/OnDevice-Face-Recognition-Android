@@ -13,8 +13,8 @@ android {
         applicationId = "com.ml.shubham0204.facenet_android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 8
-        versionName = "0.0.8"
+        versionCode = 9
+        versionName = "0.0.9"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -23,7 +23,8 @@ android {
         // 設定維度，這裡可以設為 128 或 512
         buildConfigField("int", "FACE_EMBEDDING_DIMENSION", "512")
         buildConfigField("float", "FACE_DETECTION_DISTANCE", "0.75")
-        buildConfigField("long", "FACE_DETECTION_DELAY", "1000L")
+        buildConfigField("long", "FACE_DETECTION_DELAY", "3000L")
+        buildConfigField("long", "FACE_DETECTION_TIMEOUT", "60000L")
     }
 
     signingConfigs {

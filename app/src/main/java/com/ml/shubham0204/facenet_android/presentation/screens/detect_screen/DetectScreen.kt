@@ -6,8 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.util.Log
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -28,11 +26,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Cameraswitch
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Face
 import androidx.compose.material3.Button
@@ -58,11 +53,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
+import com.ml.shubham0204.facenet_android.BuildConfig
 import com.ml.shubham0204.facenet_android.R
 import com.ml.shubham0204.facenet_android.domain.ImageVectorUseCase
 import com.ml.shubham0204.facenet_android.presentation.components.AppAlertDialog
@@ -161,10 +155,10 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
         }
     }
 }
-
 @Composable
-private fun ScreenUI(from_external:Boolean, adding_user:Boolean) {
+private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
     val viewModel: DetectScreenViewModel = koinViewModel()
+    val activity = LocalContext.current as? Activity
 
     Box {
         Camera(viewModel)
@@ -178,7 +172,7 @@ private fun ScreenUI(from_external:Boolean, adding_user:Boolean) {
                         if (adding_user) {
                             "臉部拍照中，按下上方笑臉圖案截圖"
                         }else{
-                            "偵測臉部中，請靜止${viewModel.stableDetectionDelay}秒確保人物正確"
+                            "偵測臉部中，請靜止${viewModel.stableDetectionDelay/1000}秒確保人物正確"
                         }
                     }else {
                         "Recognition on $numPeople face(s)"
@@ -187,29 +181,38 @@ private fun ScreenUI(from_external:Boolean, adding_user:Boolean) {
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center
                 )
-                Spacer(modifier = Modifier.weight(1f))
-                metrics?.let {
-                    Text(
-                        text =
-                            "face detection: ${it.timeFaceDetection} ms" +
-                            "\nface embedding: ${it.timeFaceEmbedding} ms" +
-                            "\nvector search: ${it.timeVectorSearch} ms\n" +
-                            "spoof detection: ${it.timeFaceSpoofDetection} ms"
-                        ,
-                        color = Color.White,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(bottom = 24.dp),
-                        textAlign = TextAlign.Center
-                    )
-                }
-                val activity = LocalContext.current as? Activity
-                var lastPersonID: Long? by remember { mutableStateOf(null) }
-                var lastTimestamp: Long by remember { mutableStateOf(0L) }
+//                Spacer(modifier = Modifier.weight(1f))
+//                metrics?.let {
+//                    Text(
+//                        text =
+//                        "face detection: ${it.timeFaceDetection} ms" +
+//                                "\nface embedding: ${it.timeFaceEmbedding} ms" +
+//                                "\nvector search: ${it.timeVectorSearch} ms\n" +
+//                                "spoof detection: ${it.timeFaceSpoofDetection} ms",
+//                        color = Color.White,
+//                        modifier = Modifier
+//                            .fillMaxWidth()
+//                            .padding(bottom = 24.dp),
+//                        textAlign = TextAlign.Center
+//                    )
+//                }
 
+                var lastPersonID: Long? by remember { mutableStateOf(null) }
+                var lastFaceTimestamp: Long by remember { mutableStateOf(0L) }
+                var idleStart: Long by remember { mutableStateOf(System.currentTimeMillis()) }
                 var currentResult: ImageVectorUseCase.FaceRecognitionResult? by remember { mutableStateOf(null) }
 
-                // 僅當對話框未顯示，以及非拍照加臉模式時執行邏輯
+
+
+                viewModel.detectionScreenElapse.value = System.currentTimeMillis() - idleStart
+                if (viewModel.detectionScreenElapse.value > BuildConfig.FACE_DETECTION_TIMEOUT) {
+                        // 超時，關閉活動
+                        activity?.setResult(Activity.RESULT_CANCELED)
+                        activity?.finish()
+                    }
+
+
+                // 偵測臉部邏輯
                 if (from_external && !adding_user && currentResult == null) {
                     if (faceDetectionResults.value.size == 1) {
                         faceDetectionResults.value.getOrNull(0)?.takeIf {
@@ -217,21 +220,24 @@ private fun ScreenUI(from_external:Boolean, adding_user:Boolean) {
                         }?.let { result ->
                             val currentTime = System.currentTimeMillis()
                             if (result.personID == lastPersonID) {
-                                if (currentTime - lastTimestamp >= viewModel.stableDetectionDelay) {
-                                    currentResult = result // 儲存結果並顯示對話框
-                                    //Log.e("aaaa", "from_external:$from_external, adding_user:$adding_user")
+                                viewModel.validFaceElapse.value = currentTime - lastFaceTimestamp
+                                if (viewModel.validFaceElapse.value >= viewModel.stableDetectionDelay) {
+                                    currentResult = result
                                 }
                             } else {
                                 lastPersonID = result.personID
-                                lastTimestamp = currentTime
+                                lastFaceTimestamp = currentTime
+                                viewModel.validFaceElapse.value = 0
                             }
                         } ?: run {
                             lastPersonID = null
-                            lastTimestamp = System.currentTimeMillis()
+                            lastFaceTimestamp = System.currentTimeMillis()
+                            viewModel.validFaceElapse.value = 0
                         }
                     } else {
                         lastPersonID = null
-                        lastTimestamp = System.currentTimeMillis()
+                        lastFaceTimestamp = System.currentTimeMillis()
+                        viewModel.validFaceElapse.value = 0
                     }
                 }
 
@@ -239,11 +245,9 @@ private fun ScreenUI(from_external:Boolean, adding_user:Boolean) {
                 currentResult?.let { savedResult ->
                     showConfirmationDialog(
                         context = LocalContext.current,
-                        faceRecognitionResult = savedResult, // 顯示裁剪後的人臉
+                        faceRecognitionResult = savedResult,
                         onConfirm = {
-                            // 用戶確認
-                            currentResult = null // 關閉對話框
-
+                            currentResult = null
                             activity?.setResult(Activity.RESULT_OK, Intent().apply {
                                 putExtra("user_id", savedResult.personID)
                                 val stream = ByteArrayOutputStream()
@@ -253,23 +257,19 @@ private fun ScreenUI(from_external:Boolean, adding_user:Boolean) {
                             activity?.finish()
                         },
                         onCancel = {
-                            currentResult = null // 關閉對話框
+                            currentResult = null
                             lastPersonID = null
-                            lastTimestamp = System.currentTimeMillis()
+                            lastFaceTimestamp = System.currentTimeMillis()
                         }
                     )
                 }
-
-
-
             }
         }
         DelayedVisibility(viewModel.getNumPeople() == 0L) {
             Text(
                 text = "No images in database",
                 color = Color.White,
-                modifier =
-                Modifier
+                modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp, vertical = 8.dp)
                     .background(Color.Blue, RoundedCornerShape(16.dp))
@@ -278,8 +278,25 @@ private fun ScreenUI(from_external:Boolean, adding_user:Boolean) {
             )
         }
         AppAlertDialog()
+
+        // 添加倒數計時顯示
+        if (viewModel.detectionScreenElapse.value > 0) {
+
+            val remainingTime = (BuildConfig.FACE_DETECTION_TIMEOUT - viewModel.detectionScreenElapse.value)
+            if (remainingTime > 0) {
+                Text(
+                    text = "${remainingTime / 1000}秒後自動關閉",
+                    color = Color.White,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 16.dp),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
     }
 }
+
 @Composable
 fun showConfirmationDialog(
     context: Context,

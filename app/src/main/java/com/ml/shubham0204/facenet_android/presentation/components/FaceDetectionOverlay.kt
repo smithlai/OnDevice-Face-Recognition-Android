@@ -27,12 +27,14 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.toRectF
 import androidx.core.view.doOnLayout
 import androidx.lifecycle.LifecycleOwner
+import com.ml.shubham0204.facenet_android.BuildConfig
 import com.ml.shubham0204.facenet_android.presentation.screens.detect_screen.DetectScreenViewModel
 import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlin.math.min
 
 @SuppressLint("ViewConstructor")
 @ExperimentalGetImage
@@ -275,7 +277,26 @@ class FaceDetectionOverlay(
             predictions.forEach {
                 boxPaint.color = it.boxColor
                 canvas.drawRoundRect(it.bbox, 16f, 16f, boxPaint)
-                canvas.drawText(if (it.isSpoof){"照片"} else{"ID:${it.person_id}"}, it.bbox.centerX(), it.bbox.top-10f, textPaint)
+                canvas.drawText(
+                    if (
+                        it.isSpoof){
+                        "照片"
+                    }
+                    else{
+                        if (it.person_id <= 0){
+                            ""
+                        }else{
+                            if (viewModel.validFaceElapse.value > 0){
+                                val percentage = min(100.0f, viewModel.validFaceElapse.value.toFloat()*100/BuildConfig.FACE_DETECTION_DELAY)
+                                "ID:${it.person_id}(${percentage.toInt()}%)"
+                            }else{
+                                "ID:${it.person_id}"
+                            }
+                        }
+                    },
+                    it.bbox.centerX(),
+                    it.bbox.top-10f,
+                    textPaint)
             }
         }
     }
