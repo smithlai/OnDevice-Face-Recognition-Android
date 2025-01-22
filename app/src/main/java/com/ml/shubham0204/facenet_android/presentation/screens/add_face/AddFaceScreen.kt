@@ -32,6 +32,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Photo
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -170,12 +171,13 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
                         )
                     }
                 ) {
-                    Icon(imageVector = Icons.Default.Photo, contentDescription = "Add photos")
-                    Text(text = "From Media")
+                    Icon(imageVector = Icons.Default.Photo, contentDescription = "Load Media")
+                    Text(text = "Media")
                 }
                 DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty() && !showWarning) {
                     Button(onClick = { viewModel.updateImages() }, enabled = showPersonID > 0 && !showWarning) {
-                        Text(text = "Update User")
+                        Icon(imageVector = Icons.Default.Save, contentDescription = "Save")
+                        Text(text = "Save")
                     }
                 }
             }
@@ -243,8 +245,9 @@ private fun ImagesGridFixed(
         state = gridState,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier
-            .heightIn(min = 100.dp, max = 200.dp) // 設定最小和最大高度
+
+        //java.lang.IllegalStateException: Vertically scrollable component was measured with an infinity maximum height constraints, which is disallowed.
+        modifier = Modifier.heightIn(min = 100.dp, max = 400.dp) // 設定最小和最大高度
     ) {
         items(uris) { uri ->
             Box(
