@@ -5,9 +5,11 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.LinearGradient
 import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
+import android.graphics.Shader
 import android.hardware.camera2.CameraCharacteristics
 import android.util.Log
 import android.view.SurfaceHolder
@@ -247,21 +249,41 @@ class FaceDetectionOverlay(
 
     inner class BoundingBoxOverlay(context: Context) :
         SurfaceView(context), SurfaceHolder.Callback {
-
+        val em = 12
         private val boxPaint =
             Paint().apply {
                 color = Color.BLUE
                 style = Paint.Style.STROKE
                 strokeWidth = 6f
             }
-        private val textPaint =
+        private val textPaintBack =
             Paint().apply {
                 strokeWidth = 2.0f
-                textSize = 36f
-                color = Color.WHITE
-                textAlign = Paint.Align.CENTER // 文本居中对齐
+                textSize = em*3f
+                color = Color.BLACK
+                style = Paint.Style.STROKE
+//                textAlign = Paint.Align.CENTER // 文本居中对齐
             }
-
+        private val textPaintFront =
+            Paint().apply {
+                strokeWidth = 0.0f
+                textSize = em*3f
+                color = Color.WHITE
+                style = Paint.Style.FILL
+//                textAlign = Paint.Align.CENTER // 文本居中对齐
+            }
+        private val gaugeFront =
+            Paint().apply {
+                color = Color.BLUE
+                style = Paint.Style.FILL
+                strokeWidth = 6f
+            }
+        private val gaugeBack =
+            Paint().apply {
+                color = Color.GRAY
+                style = Paint.Style.STROKE
+                strokeWidth = 6f
+            }
         override fun surfaceCreated(holder: SurfaceHolder) {}
 
         override fun surfaceChanged(holder: SurfaceHolder, format: Int, width: Int, height: Int) {}
@@ -275,29 +297,73 @@ class FaceDetectionOverlay(
 //                strokeWidth = 8f // Debug overlay
 //            })
             predictions.forEach {
+                // 繪製邊框
                 boxPaint.color = it.boxColor
                 canvas.drawRoundRect(it.bbox, 16f, 16f, boxPaint)
-                canvas.drawText(
-                    if (
-                        it.isSpoof){
-                        "照片"
-                    }
-                    else{
-                        if (it.person_id <= 0){
-                            ""
-                        }else{
-                            if (viewModel.validFaceElapse.value > 0){
-                                val percentage = min(100.0f, viewModel.validFaceElapse.value.toFloat()*100/BuildConfig.FACE_DETECTION_DELAY)
-                                "ID:${it.person_id}(${percentage.toInt()}%)"
-                            }else{
-                                "ID:${it.person_id}"
-                            }
-                        }
-                    },
-                    it.bbox.centerX(),
-                    it.bbox.top-10f,
-                    textPaint)
+
+                val id = if (it.isSpoof) {
+                    "照片"
+                }else if (it.person_id > 0) {
+                    "ID:${it.person_id}"
+                }else{
+                    "路人"
+                }
+                val shift = em*1.5f*id.length/2
+                canvas.drawText(id, it.bbox.centerX() - shift, it.bbox.top  + 10 + em*3f, textPaintFront)
+                if (it.person_id > 0) {
+                    draw_gauge(canvas, it)
+                }
+
             }
+        }
+        fun draw_gauge(canvas: Canvas, it:FaceDetectionOverlay.Prediction){
+// 計算進度百分比
+            val percentage = if (viewModel.validFaceElapse.value > 0) {
+                min(100.0f, viewModel.validFaceElapse.value.toFloat() * 100 / BuildConfig.FACE_DETECTION_DELAY).toInt()
+            } else {
+                0
+            }
+
+            // 計量表屬性
+            val meterWidth = it.bbox.width() * 0.8f // 計量表寬度為邊框寬度的 80%
+            val meterHeight = 40f // 計量表高度
+            val meterLeft = it.bbox.centerX() - meterWidth / 2
+            val meterTop = it.bbox.bottom + 20f
+            val meterRight = meterLeft + meterWidth
+            val meterBottom = meterTop + meterHeight
+
+            // 創建漸變色填充 (從紅到黃到綠)
+            val gradient = LinearGradient(
+                meterLeft, meterTop, meterRight, meterTop, // 漸變方向
+                intArrayOf(Color.RED, Color.YELLOW, Color.GREEN), // 顏色陣列
+                floatArrayOf(0f, 0.5f, 1f), // 漸變分布
+                Shader.TileMode.CLAMP
+            )
+
+            //計量表背景
+            canvas.drawRoundRect(meterLeft, meterTop, meterRight, meterBottom, 10f, 10f, gaugeBack)
+
+            // 繪製進度部分（漸變色）
+            val progressRight = meterLeft + (meterWidth * percentage / 100)
+            gaugeFront.shader = gradient
+            canvas.drawRoundRect(meterLeft, meterTop, progressRight, meterBottom, 10f, 10f, gaugeFront)
+
+            // 在計量表中間繪製文字
+            val id = "ID:${it.person_id}"
+            val shift = em*1.5f*id.length/2
+            canvas.drawText(
+                id,
+                (meterLeft + meterRight) / 2 - shift,
+                meterTop + (meterHeight / 2) + em,
+                textPaintBack
+            )
+            canvas.drawText(
+                id,
+                (meterLeft + meterRight) / 2 - shift,
+                meterTop + (meterHeight / 2) + em,
+                textPaintFront
+            )
+
         }
     }
 }
