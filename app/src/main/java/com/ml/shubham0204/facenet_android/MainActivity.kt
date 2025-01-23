@@ -1,18 +1,14 @@
 package com.ml.shubham0204.facenet_android
 
-import android.app.Activity
 import android.os.Build
 import android.os.Bundle
-import android.util.Log
 import android.view.View
 import android.view.WindowInsets
 import android.view.WindowInsetsController
-import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -27,7 +23,8 @@ import com.ml.shubham0204.facenet_android.presentation.screens.detect_screen.Det
 import com.ml.shubham0204.facenet_android.presentation.screens.face_list.FaceListScreen
 import com.ml.shubham0204.facenet_android.presentation.screens.LoginScreen
 
-class MainActivity : ComponentActivity() {
+class MainActivity : TimeoutActivity() {
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 

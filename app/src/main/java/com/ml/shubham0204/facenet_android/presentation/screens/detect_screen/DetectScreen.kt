@@ -112,12 +112,16 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
                                     .fillMaxHeight(),
                                 contentAlignment = Alignment.Center
                             ) {
-                                IconButton(onClick = onOpenFaceListClick) {
-                                    Icon(
-                                        imageVector = Icons.Default.Face,
-                                        contentDescription = "Open Face List",
-                                        modifier = Modifier.size(48.dp) // 放大 Icon
-                                    )
+                                if (from_external && !adding_user) {
+
+                                }else{
+                                    IconButton(onClick = onOpenFaceListClick) {
+                                        Icon(
+                                            imageVector = Icons.Default.Face,
+                                            contentDescription = "Open Face List",
+                                            modifier = Modifier.size(48.dp) // 放大 Icon
+                                        )
+                                    }
                                 }
                             }
                         }
