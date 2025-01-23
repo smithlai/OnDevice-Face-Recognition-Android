@@ -161,22 +161,25 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
         }
     }
 }
+fun setupInactivityTimer(activity: TimeoutActivity?){
+    //        if (from_external) {
+    activity?.setupInactivityTimer(
+        {
+            activity?.setResult(Activity.RESULT_CANCELED)
+            activity?.finish()
+        }, inactivity_timeout_ms = BuildConfig.FACE_DETECTION_TIMEOUT,
+        warning_before_close_ms = BuildConfig.FACE_DETECTION_TIMEOUT / 2
+    )
+//        }else{
+//            activity?.clearInactivityTimer()
+//        }
+}
 @Composable
 private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
     val viewModel: DetectScreenViewModel = koinViewModel()
     val activity = LocalContext.current as? TimeoutActivity
     LaunchedEffect (Unit){
-//        if (from_external) {
-            activity?.setupInactivityTimer(
-                {
-                    activity?.setResult(Activity.RESULT_CANCELED)
-                    activity?.finish()
-                }, inactivity_timeout_ms = BuildConfig.FACE_DETECTION_TIMEOUT,
-                warning_before_close_ms = BuildConfig.FACE_DETECTION_TIMEOUT / 2
-            )
-//        }else{
-//            activity?.clearInactivityTimer()
-//        }
+        setupInactivityTimer(activity)
     }
     Box {
         Camera(viewModel)
@@ -275,6 +278,7 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
 
                 // 確認對話框
                 currentResult?.let { savedResult ->
+                    setupInactivityTimer(activity)
                     showConfirmationDialog(
                         context = LocalContext.current,
                         faceRecognitionResult = savedResult,
@@ -289,6 +293,7 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
                             activity?.finish()
                         },
                         onCancel = {
+                            setupInactivityTimer(activity)
                             currentResult = null
                             lastPersonID = null
                             lastFaceTimestamp = System.currentTimeMillis()

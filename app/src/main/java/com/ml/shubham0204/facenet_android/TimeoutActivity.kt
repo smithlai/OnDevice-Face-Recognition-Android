@@ -50,6 +50,7 @@ abstract class TimeoutActivity : ComponentActivity() {
                                             inactivity_timeout_ms:Long = INACTIVITY_TIMEOUT,
                                             warning_before_close_ms: Long = WARNING_BEFORE_CLOSE,
                                   newWarningMsg:((sec:Long)->String)?=null) {
+        mToast?.cancel()
         inactivityHandler.removeCallbacksAndMessages(null)
         val first_delay = inactivity_timeout_ms - warning_before_close_ms
 
@@ -68,6 +69,7 @@ abstract class TimeoutActivity : ComponentActivity() {
                         showWarningToast(warningMsg(timeLeft))
                         inactivityHandler.postDelayed(this, 1000)
                     } else {
+                        mToast?.cancel()
                         onTimeout?.invoke()
                     }
                 }
