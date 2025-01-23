@@ -40,6 +40,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -58,6 +59,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.app.ActivityCompat
 import com.ml.shubham0204.facenet_android.BuildConfig
 import com.ml.shubham0204.facenet_android.R
+import com.ml.shubham0204.facenet_android.TimeoutActivity
 import com.ml.shubham0204.facenet_android.domain.ImageVectorUseCase
 import com.ml.shubham0204.facenet_android.presentation.components.AppAlertDialog
 import com.ml.shubham0204.facenet_android.presentation.components.DelayedVisibility
@@ -162,8 +164,20 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
 @Composable
 private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
     val viewModel: DetectScreenViewModel = koinViewModel()
-    val activity = LocalContext.current as? Activity
-
+    val activity = LocalContext.current as? TimeoutActivity
+    LaunchedEffect (Unit){
+//        if (from_external) {
+            activity?.setupInactivityTimer(
+                {
+                    activity?.setResult(Activity.RESULT_CANCELED)
+                    activity?.finish()
+                }, inactivity_timeout_ms = BuildConfig.FACE_DETECTION_TIMEOUT,
+                warning_before_close_ms = BuildConfig.FACE_DETECTION_TIMEOUT / 2
+            )
+//        }else{
+//            activity?.clearInactivityTimer()
+//        }
+    }
     Box {
         Camera(viewModel)
         DelayedVisibility(viewModel.getNumPeople() > 0) {
@@ -203,17 +217,31 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
 
                 var lastPersonID: Long? by remember { mutableStateOf(null) }
                 var lastFaceTimestamp: Long by remember { mutableStateOf(0L) }
-                var idleStart: Long by remember { mutableStateOf(System.currentTimeMillis()) }
+//                var idleStart: Long by remember { mutableStateOf(System.currentTimeMillis()) }
                 var currentResult: ImageVectorUseCase.FaceRecognitionResult? by remember { mutableStateOf(null) }
+//                viewModel.detectionScreenElapse.value = System.currentTimeMillis() - idleStart
 
+//                // 添加倒數計時顯示
+//                if (viewModel.detectionScreenElapse.value > 0) {
+//
+//                    val remainingTime = (BuildConfig.FACE_DETECTION_TIMEOUT - viewModel.detectionScreenElapse.value)
+//                    if (remainingTime > 0) {
+//                        Text(
+//                            text = "${remainingTime / 1000}秒後自動關閉",
+//                            color = Color.White,
+//                            modifier = Modifier
+//                                .fillMaxWidth()
+//                                .padding(top = 16.dp),
+//                            textAlign = TextAlign.Center
+//                        )
+//                    }
+//                }
 
-
-                viewModel.detectionScreenElapse.value = System.currentTimeMillis() - idleStart
-                if (viewModel.detectionScreenElapse.value > BuildConfig.FACE_DETECTION_TIMEOUT) {
-                        // 超時，關閉活動
-                        activity?.setResult(Activity.RESULT_CANCELED)
-                        activity?.finish()
-                    }
+//                if (viewModel.detectionScreenElapse.value > BuildConfig.FACE_DETECTION_TIMEOUT) {
+//                        // 超時，關閉活動
+//                        activity?.setResult(Activity.RESULT_CANCELED)
+//                        activity?.finish()
+//                    }
 
 
                 // 偵測臉部邏輯
@@ -283,21 +311,7 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
         }
         AppAlertDialog()
 
-        // 添加倒數計時顯示
-        if (viewModel.detectionScreenElapse.value > 0) {
 
-            val remainingTime = (BuildConfig.FACE_DETECTION_TIMEOUT - viewModel.detectionScreenElapse.value)
-            if (remainingTime > 0) {
-                Text(
-                    text = "${remainingTime / 1000}秒後自動關閉",
-                    color = Color.White,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 16.dp),
-                    textAlign = TextAlign.Center
-                )
-            }
-        }
     }
 }
 
