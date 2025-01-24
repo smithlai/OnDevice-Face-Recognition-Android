@@ -26,65 +26,69 @@ class AddFaceScreenViewModel(
 ) : ViewModel() {
 
 //    val show_personIdState: MutableState<Long> = mutableStateOf(0)
-    val personRecordState: MutableState<PersonRecord?> = mutableStateOf(null)
-    val faceImageRecord: MutableState<List<FaceImageRecord>?> = mutableStateOf(null)
+//    val page_personRecordState: MutableState<PersonRecord?> = mutableStateOf(null)
+//    val faceImageRecord: MutableState<List<FaceImageRecord>?> = mutableStateOf(null)
 
-    val selectedImageURIs: MutableState<List<Uri>> = mutableStateOf(emptyList())
-    val unselectedImageURIs: MutableState<List<Uri>> = mutableStateOf(emptyList())
+    val page_selectedImageURIs: MutableState<List<Uri>> = mutableStateOf(emptyList())
+    val page_unselectedImageURIs: MutableState<List<Uri>> = mutableStateOf(emptyList())
     val isProcessingImages: MutableState<Boolean> = mutableStateOf(false)
     val numImagesProcessed: MutableState<Int> = mutableIntStateOf(0)
 
-    fun updateImages() {
+    fun updateImages(personId:Long, selectedImageURIs:List<Uri>) {
         isProcessingImages.value = true
         CoroutineScope(Dispatchers.Default).launch {
             var personCacheFolder: File? = null // 提前宣告 cacheFolder
             try {
-                val pr = personRecordState.value?.takeIf { it.personID > 0 }
-                    ?: throw Exception("Invalid PersonRecord")
-                val existingPerson = personUseCase.getPersonById(pr.personID)
-                personRecordState.value = existingPerson?.takeIf { it.personID != null && pr.personID > 0 }
-                    ?: run {
-                        personUseCase.addPerson(pr.personID, selectedImageURIs.value.size.toLong())
-                        personUseCase.getPersonById(pr.personID)
-                    }
+                if ( personId <= 0) throw Exception("Invalid PersonID: $personId")
 
-                val personId = personRecordState.value?.personID!!
+
+                val existingPerson = personUseCase.getPersonById(personId)?:run{
+                    personUseCase.addPerson(personId, selectedImageURIs.size.toLong())
+                    personUseCase.getPersonById(personId)
+                }?: throw Exception("Failed to addPerson for PersonID: $personId")
+
+
                 // 建立目標資料夾與快取資料夾
                 val personImageFolder = imageVectorUseCase.createPersonImageFolder(personId)
-                    ?: throw Exception("Failed to create folder for PersonID: ${personId}")
+                    ?: throw Exception("Failed to create folder for PersonID: $personId")
 
                 personCacheFolder = imageVectorUseCase.createPersonCacheFolder(personId)
+                    ?: throw Exception("Failed to create cache for PersonID: $personId")
+
                 // 備份現有圖片到 Cache 資料夾
                 personImageFolder.listFiles()?.forEach { file ->
                     val cacheFile = File(personCacheFolder, file.name)
                     file.copyTo(cacheFile, overwrite = true)
                     file.delete()
                 }
-                //先清空影像資料庫
+
+                // 清空影像資料庫與資料夾
                 imageVectorUseCase.removeImages(personId)
+
                 imageVectorUseCase.removePersonImageFolder(personId)
+
                 // 新圖片處理
-                selectedImageURIs.value.forEach { imageUri ->
-                    val (resolvedUri, isFromCache) = resolveUri(imageUri, personImageFolder, personCacheFolder!!)
-                    imageVectorUseCase
-                        .addImage(personId, resolvedUri, isFromCache)
-                        .onFailure {
-                            throw it // 任一失敗直接中斷並拋出異常
-                        }
-                        .onSuccess {
-                            numImagesProcessed.value += 1
-                            setProgressDialogText("Processed ${numImagesProcessed.value} image(s)")
-                        }
+                selectedImageURIs.forEach { imageUri ->
+                    try {
+                        val (resolvedUri, isFromCache) = resolveUri(imageUri, personImageFolder, personCacheFolder!!)
+
+                        imageVectorUseCase
+                            .addImage(personId, resolvedUri, isFromCache)
+                            .onFailure {
+                                Log.e("updateImages", "Failed to add image: ${resolvedUri}, Error: ${it.message}")
+                                throw it
+                            }
+                            .onSuccess {
+                                numImagesProcessed.value += 1
+                                setProgressDialogText("Processed ${numImagesProcessed.value} image(s)")
+                            }
+                    } catch (e: Exception) {
+                        Log.e("updateImages", "Error processing image URI: $imageUri", e)
+                        throw e
+                    }
                 }
-
             } catch (e: Exception) {
-//                // 從 Cache 資料夾還原圖片
-//                val personFolder = imageVectorUseCase.createFolderForPerson(personIdState.value)
-//                cacheFolder?.listFiles()?.forEach { cachedFile ->
-//                    cachedFile.copyTo(File(personFolder, cachedFile.name), overwrite = true)
-//                }
-//                setProgressDialogText("Error updating images: ${e.message}")
-
+                Log.e("updateImages", "Error updating images", e)
             } finally {
                 // 清理 Cache 資料夾
                 personCacheFolder?.deleteRecursively()
@@ -120,27 +124,28 @@ class AddFaceScreenViewModel(
     }
 
     // 取得PersonRecord
-    fun loadPersonData(personID: Long) {
-
-        personUseCase.getPersonById(personID)?.let { personRecord ->
-
-            personRecordState.value = personRecord
+    fun loadPersonData(personID: Long):Triple<PersonRecord,List<FaceImageRecord>, List<Uri>> {
+        var personRecord = personUseCase.getPersonById(personID)?.let { personRecord ->
+            personRecord
         } ?: run {
-
-            personRecordState.value = PersonRecord(personID)  // 若找不到則設為空記錄
+            PersonRecord(personID)  // 若找不到則設為空記錄
         }
-        // 加載與此 personID 相關的 FaceImageRecords 並更新
-        imageVectorUseCase.getFaceImageRecordsByPersonID(personID)?.let { faceImageRecords ->
-            faceImageRecord.value = faceImageRecords
+        Log.e("loadPersonData", "loadPersonData : $personID : ${personRecord.personID}")
+        var imageUri:List<Uri> = emptyList()
+        var faceImageRecord = imageVectorUseCase.getFaceImageRecordsByPersonID(personID)?.let { faceImageRecords ->
             val imagePaths = faceImageRecords.map { it.imagePath }
             imagePaths.forEach { imagePath ->
-                Log.d("ImageVector", "Image Path: $imagePath")
+                Log.d("loadPersonData", "${personRecord.personID} Image Path: $imagePath")
             }
 //        val updatedUris = viewModel.selectedImageURIs.value.toMutableList().apply {
 //            addAll(imagePaths.map { Uri.parse(it) })
 //        }
-            selectedImageURIs.value = imagePaths.map { Uri.parse(it) }
-        }
+//            selectedImageURIs.value = imagePaths.map { Uri.parse(it) }
+            imageUri = imagePaths.map { Uri.parse(it) }
+            faceImageRecords
+        }?:emptyList<FaceImageRecord>()
+
+        return Triple<PersonRecord,List<FaceImageRecord>, List<Uri> >(personRecord, faceImageRecord, imageUri)
     }
 
 }

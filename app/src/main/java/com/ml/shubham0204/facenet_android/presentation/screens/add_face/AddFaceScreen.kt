@@ -1,9 +1,7 @@
 package com.ml.shubham0204.facenet_android.presentation.screens.add_face
 
-import android.app.Activity
 import android.graphics.Bitmap
 import android.net.Uri
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -11,13 +9,10 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -26,10 +21,8 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -38,7 +31,6 @@ import androidx.compose.material.icons.filled.Photo
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -60,7 +52,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.ml.shubham0204.facenet_android.BuildConfig
 import com.ml.shubham0204.facenet_android.TimeoutActivity
 import com.ml.shubham0204.facenet_android.data.PersonRecord
 import com.ml.shubham0204.facenet_android.presentation.components.AppProgressDialog
@@ -111,22 +102,22 @@ fun AddFaceScreen(personID: Long, onNavigateBack: (() -> Unit)) {
 }
 
 @Composable
-private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
+private fun ScreenUI(viewModel: AddFaceScreenViewModel, initial_personID: Long) {
     val pickVisualMediaLauncher =
         rememberLauncherForActivityResult(
             contract = ActivityResultContracts.PickMultipleVisualMedia()
         ) {
-            val updatedUris = viewModel.selectedImageURIs.value.toMutableList().apply {
+            val updatedUris = viewModel.page_selectedImageURIs.value.toMutableList().apply {
                 addAll(it)
             }
-            viewModel.selectedImageURIs.value = updatedUris
+            viewModel.page_selectedImageURIs.value = updatedUris
         }
-    val isFixedPersonID = personID > 0
-    var showPersonID by remember { mutableStateOf(personID) }
+    val isFixedPersonID = initial_personID > 0
+    var showPersonID by remember { mutableStateOf(initial_personID) }
     var showWarning by remember { mutableStateOf(false) }
-
     LaunchedEffect(showPersonID) {
-        viewModel.loadPersonData(showPersonID)
+        val (_personRecord, _faces, _uris) = viewModel.loadPersonData(showPersonID)
+        viewModel.page_selectedImageURIs.value = _uris
         resetUnselectedImages(viewModel)
     }
 
@@ -174,19 +165,24 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceEvenly,
             ) {
-                Button(
-                    enabled = (showPersonID > 0 && !showWarning),
-                    onClick = {
-                        pickVisualMediaLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
+                DelayedVisibility( !showWarning && showPersonID > 0) {
+                    Button(
+                        enabled = true,//(showPersonID > 0 && !showWarning),
+                        onClick = {
+                            pickVisualMediaLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        }
+                    ) {
+                        Icon(imageVector = Icons.Default.Photo, contentDescription = "Load Media")
+                        Text(text = "Media")
                     }
-                ) {
-                    Icon(imageVector = Icons.Default.Photo, contentDescription = "Load Media")
-                    Text(text = "Media")
                 }
-                DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty() && !showWarning) {
-                    Button(onClick = { viewModel.updateImages() }, enabled = showPersonID > 0 && !showWarning) {
+                DelayedVisibility( !showWarning && showPersonID > 0) {
+                    Button(
+                        enabled = viewModel.page_selectedImageURIs.value.isNotEmpty(),
+                        onClick = { viewModel.updateImages(showPersonID, viewModel.page_selectedImageURIs.value) }
+                        ) {
                         Icon(imageVector = Icons.Default.Save, contentDescription = "Save")
                         Text(text = "Save")
                     }
@@ -195,9 +191,9 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
         }
 
         item {
-            DelayedVisibility(viewModel.selectedImageURIs.value.isNotEmpty()) {
+            DelayedVisibility(viewModel.page_selectedImageURIs.value.isNotEmpty()) {
                 Text(
-                    text = "${viewModel.selectedImageURIs.value.size} image(s) selected",
+                    text = "${viewModel.page_selectedImageURIs.value.size} image(s) selected",
                     style = MaterialTheme.typography.labelSmall
                 )
             }
@@ -209,12 +205,12 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
 
         item {
             ImagesGridFixed(
-                uris = viewModel.selectedImageURIs.value,
+                uris = viewModel.page_selectedImageURIs.value,
                 onImageAction = { uri ->
-                    viewModel.selectedImageURIs.value = viewModel.selectedImageURIs.value.toMutableList().apply {
+                    viewModel.page_selectedImageURIs.value = viewModel.page_selectedImageURIs.value.toMutableList().apply {
                         remove(uri)
                     }
-                    viewModel.unselectedImageURIs.value = viewModel.unselectedImageURIs.value.toMutableList().apply {
+                    viewModel.page_unselectedImageURIs.value = viewModel.page_unselectedImageURIs.value.toMutableList().apply {
                         add(uri)
                     }
                 },
@@ -228,12 +224,12 @@ private fun ScreenUI(viewModel: AddFaceScreenViewModel, personID: Long) {
 
         item {
             ImagesGridFixed(
-                uris = viewModel.unselectedImageURIs.value,
+                uris = viewModel.page_unselectedImageURIs.value,
                 onImageAction = { uri ->
-                    viewModel.unselectedImageURIs.value = viewModel.unselectedImageURIs.value.toMutableList().apply {
+                    viewModel.page_unselectedImageURIs.value = viewModel.page_unselectedImageURIs.value.toMutableList().apply {
                         remove(uri)
                     }
-                    viewModel.selectedImageURIs.value = viewModel.selectedImageURIs.value.toMutableList().apply {
+                    viewModel.page_selectedImageURIs.value = viewModel.page_selectedImageURIs.value.toMutableList().apply {
                         add(uri)
                     }
                 },
@@ -303,14 +299,14 @@ private fun ImagesGridFixed(
 }
 
 private fun resetUnselectedImages(viewModel: AddFaceScreenViewModel) {
-    viewModel.unselectedImageURIs.value = mutableListOf() // 清空列表
+    viewModel.page_unselectedImageURIs.value = mutableListOf() // 清空列表
     viewModel.imageVectorUseCase.latestFaceRecognitionResult.value.getOrNull(0)?.takeIf {
         it.spoofResult?.isSpoof == false
     }?.let { result ->
         val cacheFolder = viewModel.imageVectorUseCase.createBaseCacheFolder()
         val cachedFile = File(cacheFolder, "cached_face.png")
         result.croppedFace.compress(Bitmap.CompressFormat.PNG, 100, cachedFile.outputStream())
-        viewModel.unselectedImageURIs.value = mutableListOf(Uri.fromFile(cachedFile))
+        viewModel.page_unselectedImageURIs.value = mutableListOf(Uri.fromFile(cachedFile))
     }
 }
 

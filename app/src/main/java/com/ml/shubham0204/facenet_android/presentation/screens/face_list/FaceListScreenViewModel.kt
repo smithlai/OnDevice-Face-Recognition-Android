@@ -1,5 +1,6 @@
 package com.ml.shubham0204.facenet_android.presentation.screens.face_list
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import com.ml.shubham0204.facenet_android.domain.ImageVectorUseCase
 import com.ml.shubham0204.facenet_android.domain.PersonUseCase

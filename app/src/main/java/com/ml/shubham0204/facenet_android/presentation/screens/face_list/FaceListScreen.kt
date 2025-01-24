@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -108,8 +109,8 @@ fun FaceListScreen(
     ) { uri ->
         uri?.let { selectedUri ->
             importImages(context, addFaceViewModel, selectedUri)
+            }
         }
-    }
 
     val exportLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree()
@@ -145,7 +146,6 @@ fun FaceListScreen(
                             )
                         }
 
-                        // 下拉菜單
                         DropdownMenu(
                             expanded = isMenuExpanded,
                             onDismissRequest = { isMenuExpanded = false }
@@ -187,11 +187,11 @@ fun FaceListScreen(
             }
         ) { innerPadding ->
             Column(modifier = Modifier.padding(innerPadding)) {
-                ScreenUI(viewModel, onFaceItemClick)
-                AppAlertDialog()
+                        ScreenUI(viewModel, onFaceItemClick)
+                        AppAlertDialog()
+                    }
+                }
             }
-        }
-    }
     val activity = LocalContext.current as? TimeoutActivity
     LaunchedEffect (Unit){
         activity?.setupDefaultInactivityTimer()
@@ -252,55 +252,91 @@ private fun compressDirectory(dir: File, zipOut: ZipOutputStream, basePath: Stri
 // 修改 importImages 函数
 private fun importImages(context: Context, addFaceViewModel: AddFaceScreenViewModel, uri: Uri) {
     CoroutineScope(Dispatchers.IO).launch {
-        val cacheDir = addFaceViewModel.imageVectorUseCase.createBaseCacheFolder()
-        context.contentResolver.openInputStream(uri)?.use { inputStream ->
+        try {
+            Log.d("importImages", "Starting importImages function")
 
-            ZipInputStream(inputStream).use { zipIn ->
-                var entry: ZipEntry? = zipIn.nextEntry
-                while (entry != null) {
-                    val outFile = File(cacheDir, entry.name)
+            val cacheDir = addFaceViewModel.imageVectorUseCase.createBaseCacheFolder()
+            Log.d("importImages", "Cache directory created: ${cacheDir?.absolutePath}")
 
-                    if (entry.isDirectory) {
-                        // 如果是目錄，創建目錄
-                        if (!outFile.exists()) {
-                            outFile.mkdirs()
+            context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                Log.d("importImages", "Opened input stream for URI: $uri")
+                ZipInputStream(inputStream).use { zipIn ->
+                    var entry: ZipEntry? = zipIn.nextEntry
+                    while (entry != null) {
+                        Log.d("importImages", "Processing ZIP entry: ${entry.name}")
+
+                        val outFile = File(cacheDir, entry.name)
+                        if (entry.isDirectory) {
+                            // 如果是目錄，創建目錄
+                            if (!outFile.exists()) {
+                                outFile.mkdirs()
+                            }
+                            if (outFile.exists())
+                                Log.d("importImages", "Created directory: ${outFile.absolutePath}")
+                            else {
+
+                                Log.e(
+                                    "importImages",
+                                    "exists: ${outFile.absolutePath} ${outFile.exists()}"
+                                )
+                                Log.e(
+                                    "importImages",
+                                    "Failed to Created directory: ${outFile.absolutePath}"
+                                )
+                            }
+                        } else {
+                            // 如果是檔案，確保父目錄存在
+                            val parentDir = outFile.parentFile
+                            if (parentDir != null && !parentDir.exists()) {
+                                parentDir.mkdirs()
+                            }
+                            // 將檔案內容寫入
+                            outFile.outputStream().use { fos ->
+                                zipIn.copyTo(fos)
+                                Log.d("importImages", "Extracted file: ${outFile.absolutePath}")
+                            }
                         }
-                    } else {
-                        // 如果是檔案，確保父目錄存在
-                        val parentDir = outFile.parentFile
-                        if (parentDir != null && !parentDir.exists()) {
-                            parentDir.mkdirs()
-                        }
-                        // 將檔案內容寫入
-                        outFile.outputStream().use { fos ->
-                            zipIn.copyTo(fos)
-                        }
+                        zipIn.closeEntry()
+                        entry = zipIn.nextEntry
                     }
-
-                    zipIn.closeEntry()
-                    entry = zipIn.nextEntry
                 }
-            }
+            } ?: Log.e("importImages", "Failed to open input stream for URI: $uri")
 
-        }
-        cacheDir?.listFiles()?.forEach { folder ->
-            val personId = folder.name.toLongOrNull()
-            if (personId != null) {
-                val imageUris = folder.listFiles()?.mapNotNull { file ->
-                    try {
-                        file.toUri()
-                    } catch (e: Exception) {
-                        null // Ignore invalid URIs
-                    }
+            Log.e("importImages", "====Stage 2===")
+            cacheDir?.listFiles()?.forEach { folder ->
+                // 如果不是目录，跳过
+                if (!folder.isDirectory) {
+                    Log.w("importImages", "Skipping non-folder entry: ${folder.absolutePath}")
+                    return@forEach
+                }
+
+                val personId = folder.name.toLongOrNull()
+                if (personId == null) {
+                    Log.w("importImages", "Skipping folder with non-numeric name: ${folder.absolutePath}")
+                    return@forEach
+                }
+
+                Log.d("importImages", "Processing folder for personId: $personId")
+                val folder_imageUris = folder.listFiles()?.mapNotNull {
+                    it.toUri().also { uri -> Log.d("importImages", "Found image URI: $uri") }
                 } ?: emptyList()
-                addFaceViewModel.loadPersonData(personId)
-                addFaceViewModel.selectedImageURIs.value = imageUris
-                addFaceViewModel.updateImages()
+
+                val (_personRecord, _faces, _imageuris) = addFaceViewModel.loadPersonData(personId)
+                Log.d("importImages", "Loaded person data for personId: $personId")
+
+//                addFaceViewModel.page_selectedImageURIs.value = imageUris
+                Log.d("importImages", "Updated selectedImageURIs for personId: $personId -> ${folder_imageUris.joinToString(",")}")
+
+                addFaceViewModel.updateImages(personId, folder_imageUris)
+                Log.d("importImages", "Called updateImages for personId: $personId")
             }
+        } catch (e: Exception) {
+            Log.e("importImages", "Error importing images", e)
+        } finally {
+            Log.d("importImages", "Completed importImages function")
         }
     }
 }
-
 @Composable
 private fun ScreenUI(
     viewModel: FaceListScreenViewModel,
