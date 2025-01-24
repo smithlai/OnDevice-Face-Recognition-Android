@@ -70,6 +70,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import coil.compose.rememberImagePainter
 import com.ml.shubham0204.facenet_android.R
+import com.ml.shubham0204.facenet_android.TimeoutActivity
 import com.ml.shubham0204.facenet_android.data.FaceImageRecord
 import com.ml.shubham0204.facenet_android.data.PersonRecord
 import com.ml.shubham0204.facenet_android.domain.ImageVectorUseCase
@@ -187,10 +188,14 @@ fun FaceListScreen(
         ) { innerPadding ->
             Column(modifier = Modifier.padding(innerPadding)) {
                 ScreenUI(viewModel, onFaceItemClick)
-                    AppAlertDialog()
-                }
+                AppAlertDialog()
             }
         }
+    }
+    val activity = LocalContext.current as? TimeoutActivity
+    LaunchedEffect (Unit){
+        activity?.setupDefaultInactivityTimer()
+    }
 }
 
 private fun exportImages(context: Context, selectedUri: Uri) {

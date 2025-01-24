@@ -1,5 +1,6 @@
 package com.ml.shubham0204.facenet_android.presentation.screens.add_face
 
+import android.app.Activity
 import android.graphics.Bitmap
 import android.net.Uri
 import android.util.Log
@@ -59,6 +60,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import com.ml.shubham0204.facenet_android.BuildConfig
+import com.ml.shubham0204.facenet_android.TimeoutActivity
 import com.ml.shubham0204.facenet_android.data.PersonRecord
 import com.ml.shubham0204.facenet_android.presentation.components.AppProgressDialog
 import com.ml.shubham0204.facenet_android.presentation.components.DelayedVisibility
@@ -100,6 +103,10 @@ fun AddFaceScreen(personID: Long, onNavigateBack: (() -> Unit)) {
                 ImageReadProgressDialog(viewModel, onNavigateBack)
             }
         }
+    }
+    val activity = LocalContext.current as? TimeoutActivity
+    LaunchedEffect (Unit){
+        activity?.setupDefaultInactivityTimer()
     }
 }
 

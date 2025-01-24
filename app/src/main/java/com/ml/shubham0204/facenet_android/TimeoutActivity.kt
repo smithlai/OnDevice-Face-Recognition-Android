@@ -7,26 +7,36 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 
 abstract class TimeoutActivity : ComponentActivity() {
-    private val inactivityHandler = Handler(Looper.getMainLooper())
-    private val INACTIVITY_TIMEOUT = BuildConfig.INACTIVITY_TIMEOUT
-    private val WARNING_BEFORE_CLOSE = BuildConfig.WARNING_BEFORE_CLOSE
-    private var startTime = 0L
+    companion object {
+        const val INACTIVITY_TIMEOUT = BuildConfig.INACTIVITY_TIMEOUT
+        const val WARNING_BEFORE_CLOSE = BuildConfig.WARNING_BEFORE_CLOSE
+    }
+    private val mInactivityHandler = Handler(Looper.getMainLooper())
+    private var mStartTime = 0L
     private var mToast: Toast? = null
     public var time_elapsed_ms:Long
         get() {
-            if (startTime == 0L){
+            if (mStartTime == 0L){
                 return 0
             }
-            return (System.currentTimeMillis() - startTime)
+            return (System.currentTimeMillis() - mStartTime)
         }
         private set(value){}
 
-    private var countdownRunnable: Runnable? = null
-    private var warningMsg: (timeLeft: Long) -> String = { timeLeft ->
-        "即將在${timeLeft}秒後關閉應用"
+    private var mCountdownRunnable: Runnable? = null
+
+    private var mInactiveTimeout_ms: Long = INACTIVITY_TIMEOUT
+    private var mWarningClose_ms: Long = WARNING_BEFORE_CLOSE
+
+    fun defaultCloseWarnMsg(timeLeft: Long): String {
+        return "即將在${timeLeft}秒後關閉應用"
     }
+    private var mWarningMsg: (timeLeft: Long) -> String = ::defaultCloseWarnMsg
 
-
+    fun defaultOnTimeout(): Unit {
+        finish()
+    }
+    private var mOnTimeout: ()-> Unit = ::defaultOnTimeout
     protected open fun showWarningToast(text: String) {
         mToast?.cancel()
         mToast = Toast.makeText(
@@ -38,50 +48,55 @@ abstract class TimeoutActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setupInactivityTimer(onTimeout={finish()})
+        setupDefaultInactivityTimer()
+
     }
 
 
     open fun clearInactivityTimer(){
-        inactivityHandler.removeCallbacksAndMessages(null)
-        countdownRunnable = null
+        mInactivityHandler.removeCallbacksAndMessages(null)
+        mCountdownRunnable = null
     }
+
+
     open fun setupInactivityTimer(onTimeout:(() -> Unit)?=null,
-                                            inactivity_timeout_ms:Long = INACTIVITY_TIMEOUT,
-                                            warning_before_close_ms: Long = WARNING_BEFORE_CLOSE,
+                                            newinactivity_timeout_ms:Long? = null,
+                                            newwarning_before_close_ms: Long? = null,
                                   newWarningMsg:((sec:Long)->String)?=null) {
         mToast?.cancel()
-        inactivityHandler.removeCallbacksAndMessages(null)
-        val first_delay = inactivity_timeout_ms - warning_before_close_ms
+        mInactivityHandler.removeCallbacksAndMessages(null)
+        mInactiveTimeout_ms = newinactivity_timeout_ms?:mInactiveTimeout_ms
+        mWarningClose_ms = newwarning_before_close_ms?:mWarningClose_ms
 
-
-        // overwrite onTimeout()
-        if (onTimeout != null){
-            countdownRunnable = object: Runnable {
+        mOnTimeout = onTimeout?:mOnTimeout
+        mOnTimeout?.let{
+            mCountdownRunnable = object: Runnable {
                 override fun run() {
-                    if (startTime == 0L) startTime = System.currentTimeMillis()
-                    var timeLeft = (warning_before_close_ms - time_elapsed_ms) / 1000
+                    if (mStartTime == 0L) mStartTime = System.currentTimeMillis()
+                    var timeLeft = (mWarningClose_ms - time_elapsed_ms) / 1000
 
                     if (timeLeft >= 0) {
                         if (newWarningMsg != null) {
-                            warningMsg = newWarningMsg
+                            mWarningMsg = newWarningMsg
                         }
-                        showWarningToast(warningMsg(timeLeft))
-                        inactivityHandler.postDelayed(this, 1000)
+                        showWarningToast(mWarningMsg(timeLeft))
+                        mInactivityHandler.postDelayed(this, 1000)
                     } else {
                         mToast?.cancel()
-                        onTimeout?.invoke()
+                        it?.invoke()
                     }
                 }
             }
+            val first_delay = mInactiveTimeout_ms - mWarningClose_ms
+            mCountdownRunnable?.let {
+                mStartTime = 0L
+                mInactivityHandler.postDelayed(
+                    it,
+                    first_delay
+                )
+            }
         }
-        countdownRunnable?.let {
-            startTime = 0L
-            inactivityHandler.postDelayed(
-                it,
-                first_delay
-            )
-        }
+
     }
     override fun onUserInteraction() {
         super.onUserInteraction()
@@ -91,6 +106,15 @@ abstract class TimeoutActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        inactivityHandler.removeCallbacksAndMessages(null)
+        mInactivityHandler.removeCallbacksAndMessages(null)
+    }
+
+    fun setupDefaultInactivityTimer(){
+        setupInactivityTimer(
+            ::defaultOnTimeout,
+            newinactivity_timeout_ms = INACTIVITY_TIMEOUT,
+            newwarning_before_close_ms = WARNING_BEFORE_CLOSE,
+            ::defaultCloseWarnMsg
+        )
     }
 }

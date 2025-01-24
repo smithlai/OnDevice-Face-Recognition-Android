@@ -160,6 +160,10 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
             Column(modifier = Modifier.padding(innerPadding)) { ScreenUI(from_external, adding_user) }
         }
     }
+    val activity = LocalContext.current as? TimeoutActivity
+    LaunchedEffect (Unit){
+        setupInactivityTimer(activity)
+    }
 }
 fun setupInactivityTimer(activity: TimeoutActivity?){
     //        if (from_external) {
@@ -167,8 +171,8 @@ fun setupInactivityTimer(activity: TimeoutActivity?){
         {
             activity?.setResult(Activity.RESULT_CANCELED)
             activity?.finish()
-        }, inactivity_timeout_ms = BuildConfig.FACE_DETECTION_TIMEOUT,
-        warning_before_close_ms = BuildConfig.FACE_DETECTION_TIMEOUT / 2
+        }, newinactivity_timeout_ms = BuildConfig.FACE_DETECTION_TIMEOUT,
+        newwarning_before_close_ms = BuildConfig.FACE_DETECTION_TIMEOUT / 2
     )
 //        }else{
 //            activity?.clearInactivityTimer()
@@ -178,9 +182,6 @@ fun setupInactivityTimer(activity: TimeoutActivity?){
 private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
     val viewModel: DetectScreenViewModel = koinViewModel()
     val activity = LocalContext.current as? TimeoutActivity
-    LaunchedEffect (Unit){
-        setupInactivityTimer(activity)
-    }
     Box {
         Camera(viewModel)
         DelayedVisibility(viewModel.getNumPeople() > 0) {

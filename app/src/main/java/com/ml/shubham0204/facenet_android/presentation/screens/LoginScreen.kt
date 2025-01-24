@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.ui.platform.LocalContext
+import com.ml.shubham0204.facenet_android.TimeoutActivity
 import kotlinx.coroutines.delay
 
 @Composable
@@ -117,6 +119,10 @@ fun LoginScreen(onLoginSuccess: () -> Unit) {
                 }
             }
         }
+    }
+    val activity = LocalContext.current as? TimeoutActivity
+    LaunchedEffect (Unit){
+        activity?.setupDefaultInactivityTimer()
     }
 }
 
