@@ -15,6 +15,7 @@ import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -50,6 +51,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.res.stringResource
@@ -108,15 +110,20 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
                             )
 
                             // IconButton 居中，佔用剩餘空間
+                            var isFaceIconVisible by remember { mutableStateOf(!(from_external && !adding_user)) } // 使用者模式隱藏按鈕
                             Box(
                                 modifier = Modifier
                                     .weight(1f) // 佔用剩餘空間
-                                    .fillMaxHeight(),
+                                    .fillMaxHeight().pointerInput(Unit) {
+                                        if (BuildConfig.ALLOW_ANOMYNOUS_EDITOR) {
+                                            detectTapGestures(
+                                                onLongPress = { isFaceIconVisible = true } // 長按顯示按鈕
+                                            )
+                                        }
+                                    },
                                 contentAlignment = Alignment.Center
                             ) {
-                                if (from_external && !adding_user) {
-
-                                }else{
+                                DelayedVisibility( isFaceIconVisible ) {
                                     IconButton(onClick = onOpenFaceListClick) {
                                         Icon(
                                             imageVector = Icons.Default.Face,
@@ -125,6 +132,7 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
                                         )
                                     }
                                 }
+
                             }
                         }
                     },

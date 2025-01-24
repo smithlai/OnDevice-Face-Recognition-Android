@@ -13,8 +13,8 @@ android {
         applicationId = "com.ml.shubham0204.facenet_android"
         minSdk = 26
         targetSdk = 34
-        versionCode = 10
-        versionName = "0.1.0"
+        versionCode = 12
+        versionName = "0.1.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -27,6 +27,7 @@ android {
         buildConfigField("long", "FACE_DETECTION_TIMEOUT", "60000L")
         buildConfigField("long", "INACTIVITY_TIMEOUT", "2 * 60 * 1000L")
         buildConfigField("long", "WARNING_BEFORE_CLOSE", "1 * 60 * 1000L")
+        buildConfigField("boolean", "ALLOW_ANOMYNOUS_EDITOR", "true")
     }
 
     signingConfigs {
