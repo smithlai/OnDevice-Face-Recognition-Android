@@ -219,7 +219,7 @@ class FaceDetectionOverlay(
                 val predictions = ArrayList<Prediction>()
                 val (metrics, results) = viewModel.imageVectorUseCase.getNearestPersonName(frameBitmap)
                 results.forEach {
-                    (copppedface, person_id, boundingBox, spoofResult) ->
+                    (copppedface, person_id, boundingBox, spoofResult, cosineSimiliarity) ->
                     val box = boundingBox.toRectF()
                     var personId = person_id
                     var boxColor = Color.GRAY // Default color for unrecognized face
@@ -233,7 +233,7 @@ class FaceDetectionOverlay(
                         boxColor = Color.GREEN // Green for recognized face
                     }
                     boundingBoxTransform.mapRect(box)
-                    predictions.add(Prediction(box, personId, true==spoofResult?.isSpoof, boxColor))
+                    predictions.add(Prediction(box, personId, true==spoofResult?.isSpoof, boxColor, cosineSimiliarity))
                 }
                 withContext(Dispatchers.Main) {
                     viewModel.faceDetectionMetricsState.value = metrics
@@ -245,7 +245,7 @@ class FaceDetectionOverlay(
             image.close()
         }
 
-    data class Prediction(var bbox: RectF, var person_id: Long, var isSpoof:Boolean, var boxColor: Int)
+    data class Prediction(var bbox: RectF, var person_id: Long, var isSpoof:Boolean, var boxColor: Int, var cosineSimiliarity: Float)
 
     inner class BoundingBoxOverlay(context: Context) :
         SurfaceView(context), SurfaceHolder.Callback {
@@ -301,15 +301,15 @@ class FaceDetectionOverlay(
                 boxPaint.color = it.boxColor
                 canvas.drawRoundRect(it.bbox, 16f, 16f, boxPaint)
 
-                val id = if (it.isSpoof) {
-                    "照片"
-                }else if (it.person_id > 0) {
-                    "ID:${it.person_id}"
-                }else{
-                    "路人"
+                val (id, confidence) = when {
+                    it.isSpoof -> "照片" to ""
+                    it.person_id > 0 -> "ID:${it.person_id}" to " (${(it.cosineSimiliarity*100).toInt()}%)"
+                    else -> "路人" to ""
                 }
-                val shift = em*1.5f*id.length/2
-                canvas.drawText(id, it.bbox.centerX() - shift, it.bbox.top  + 10 + em*3f, textPaintFront)
+
+                val tag = "$id$confidence"
+                val shift = em*1.5f*tag.length/2
+                canvas.drawText(tag, it.bbox.centerX() - shift, it.bbox.top  + 10 + em*3f, textPaintFront)
 //                if (it.person_id > 0) {
                     draw_gauge(canvas, it)
 //                }

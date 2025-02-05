@@ -28,7 +28,7 @@ class ImageVectorUseCase(
     private val mediapipeFaceDetector: MediapipeFaceDetector,
     private val faceSpoofDetector: FaceSpoofDetector,
     private val imagesVectorDB: ImagesVectorDB,
-    private val faceNet: FaceNet
+    private val faceNet: FaceNet//MobileFaceNet
 ) {
     companion object{
         const val IMAGE_DIR = "PersonImages"
@@ -39,7 +39,8 @@ class ImageVectorUseCase(
         val croppedFace:Bitmap,
         val personID: Long,
         val boundingBox: Rect,
-        val spoofResult: FaceSpoofDetector.FaceSpoofResult? = null
+        val spoofResult: FaceSpoofDetector.FaceSpoofResult? = null,
+        val cosineSimilarity: Float
     )
 
     suspend fun addImage(personID: Long, imageUri: Uri, isFromCache: Boolean): Result<Boolean> {
@@ -116,31 +117,36 @@ class ImageVectorUseCase(
             val (embedding, t2) = measureTimedValue { faceNet.getFaceEmbedding(croppedBitmap) }
             avgT2 += t2.toLong(DurationUnit.MILLISECONDS)
             // Perform nearest-neighbor search
-            val (recognitionResult, t3) =
-                measureTimedValue { imagesVectorDB.getNearestEmbeddingPersonName(embedding) }
+            val (recognitionResults, t3) =
+                measureTimedValue { imagesVectorDB.getNearestEmbeddingPersonNames(embedding, 0) }
             avgT3 += t3.toLong(DurationUnit.MILLISECONDS)
 
             val spoofResult = faceSpoofDetector.detectSpoof(frameBitmap, boundingBox)
             avgT4 += spoofResult.timeMillis
 
-            if (recognitionResult == null) {
-                faceRecognitionResults.add(FaceRecognitionResult(croppedBitmap, 0, boundingBox, spoofResult))
-                //continue
-            }else{
-                // Calculate cosine similarity between the nearest-neighbor
-                // and the query embedding
-                val distance = cosineDistance(embedding, recognitionResult.faceEmbedding)
-                // If the distance > 0.4, we recognize the person
-                // else we conclude that the face does not match enough
-                if (distance > BuildConfig.FACE_DETECTION_DISTANCE) {
-                    faceRecognitionResults.add(
-                        FaceRecognitionResult(croppedBitmap, recognitionResult.personID, boundingBox, spoofResult)
-                    )
-                } else {
-                    faceRecognitionResults.add(
-                        FaceRecognitionResult(croppedBitmap, 0, boundingBox, spoofResult)
-                    )
+            if (recognitionResults.isEmpty()) {
+                faceRecognitionResults.add(FaceRecognitionResult(croppedBitmap, 0, boundingBox, spoofResult, 0f))
+            }else {
+                var bestRecognitionResult:Pair<FaceImageRecord?, Float> = null to -1f
+
+                // 遍歷 recognitionResults
+                for (recognitionResult in recognitionResults) {
+                    val distance = cosineDistance(embedding, recognitionResult.faceEmbedding)
+                    if (distance > bestRecognitionResult.second && distance > BuildConfig.FACE_DETECTION_DISTANCE) {
+                        bestRecognitionResult = recognitionResult to distance
+                    }
                 }
+
+                faceRecognitionResults.add(
+                    FaceRecognitionResult(
+                        croppedBitmap,
+                        bestRecognitionResult.first?.personID ?: 0,
+                        boundingBox,
+                        spoofResult,
+                        if (bestRecognitionResult.first == null) 0f else bestRecognitionResult.second
+                    )
+                )
+
             }
         }
         val metrics =
@@ -158,6 +164,7 @@ class ImageVectorUseCase(
         return Pair(metrics, faceRecognitionResults)
     }
 
+    // -1 ~ +1
     private fun cosineDistance(x1: FloatArray, x2: FloatArray): Float {
         var mag1 = 0.0f
         var mag2 = 0.0f
