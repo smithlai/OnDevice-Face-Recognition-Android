@@ -317,11 +317,12 @@ class FaceDetectionOverlay(
             }
         }
         fun draw_gauge(canvas: Canvas, it:FaceDetectionOverlay.Prediction){
+            val detecttime = viewModel.preferencesManager.detectionDelay.value
             if (viewModel.validFaceElapse.value > 0) {
-                val percentage = if (viewModel.validFaceElapse.value > 0) {
+                val percentage = if (viewModel.validFaceElapse.value > 0 && detecttime > 0) {
                     min(
                         100.0f,
-                        viewModel.validFaceElapse.value.toFloat() * 100 / BuildConfig.FACE_DETECTION_DELAY
+                        viewModel.validFaceElapse.value.toFloat() * 100 / detecttime
                     ).toInt()
                 } else {
                     0

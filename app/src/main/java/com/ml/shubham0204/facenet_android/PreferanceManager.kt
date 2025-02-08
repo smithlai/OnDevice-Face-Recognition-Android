@@ -13,8 +13,9 @@ import org.koin.core.annotation.Single
 class PreferenceManager(context: Context) {
     private val prefs = context.getSharedPreferences("AppPrefs", Context.MODE_PRIVATE)
 
+    // Detection confidence
     private val _detectionConfidence = MutableStateFlow(
-        prefs.getFloat("detectionConfidence", 0.5f)
+        prefs.getFloat("detectionConfidence", BuildConfig.FACE_DETECTION_DISTANCE)
     )
     val detectionConfidence = _detectionConfidence.asStateFlow()
 
@@ -22,14 +23,35 @@ class PreferenceManager(context: Context) {
         prefs.edit().putFloat("detectionConfidence", value).apply()
         _detectionConfidence.value = value
     }
-//    val detectionTimeoutms = mutableStateOf(prefs.getLong("detectionTimeoutms", BuildConfig.FACE_DETECTION_TIMEOUT))
-//    val detectionDelayms = mutableStateOf(prefs.getLong("detectionDelayms", BuildConfig.FACE_DETECTION_DELAY))
-//
-//    fun updateFloat(key:String, f:Float){
-//        prefs.edit().putFloat(key, f).apply()
-//    }
-//    fun updateLong(key:String, l:Long){
-//        prefs.edit().putLong(key, l).apply()
-//    }
+    // Detection time
+    private val _detectionDelay = MutableStateFlow(
+        prefs.getLong("detectionDelay", BuildConfig.FACE_DETECTION_DELAY)
+    )
+    val detectionDelay = _detectionDelay.asStateFlow()
 
+    fun updateDetectionDelay(ms: Long) {
+        prefs.edit().putLong("detectionDelay", ms).apply()
+        _detectionDelay.value = ms
+    }
+
+//    // Detection timeout
+//    private val _detectionTimeout = MutableStateFlow(
+//        prefs.getLong("detectionTimeout", BuildConfig.FACE_DETECTION_TIMEOUT)
+//    )
+//    val detectionTimeout = _detectionTimeout.asStateFlow()
+//
+//    fun updateDetectionTimeout(ms: Long) {
+//        prefs.edit().putLong("detectionTimeout", ms).apply()
+//        _detectionTimeout.value = ms
+//    }
+//    // Auto Close time
+//    private val _inactiveTimeout = MutableStateFlow(
+//        prefs.getLong("inactiveTimeout", BuildConfig.INACTIVITY_TIMEOUT)
+//    )
+//    val inactiveTimeout = _inactiveTimeout.asStateFlow()
+//
+//    fun updateInactiveTimeout(ms: Long) {
+//        prefs.edit().putLong("inactiveTimeout", ms).apply()
+//        _inactiveTimeout.value = ms
+//    }
 }

@@ -202,7 +202,7 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
                         if (adding_user) {
                             "臉部拍照中，按下上方笑臉圖案截圖"
                         }else{
-                            "偵測臉部中，請靜止${viewModel.stableDetectionDelay/1000}秒確保人物正確"
+                            "偵測臉部中，請靜止${viewModel.preferencesManager.detectionDelay.value/1000}秒確保人物正確"
                         }
                     }else {
                         "Recognition on $numPeople face(s)"
@@ -265,7 +265,7 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
                             val currentTime = System.currentTimeMillis()
                             if (result.personID == lastPersonID) {
                                 viewModel.validFaceElapse.value = currentTime - lastFaceTimestamp
-                                if (viewModel.validFaceElapse.value >= viewModel.stableDetectionDelay) {
+                                if (viewModel.validFaceElapse.value >= viewModel.preferencesManager.detectionDelay.value) {
                                     currentResult = result
                                 }
                             } else {

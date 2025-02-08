@@ -44,6 +44,8 @@ fun PreferencesScreen(
     val viewModel: PreferencesViewModel = koinViewModel()
     val preferencesManager = viewModel.preferencesManager
     val detectionConfidence by preferencesManager.detectionConfidence.collectAsState()
+    val detectionTimeMs by preferencesManager.detectionDelay.collectAsState()
+    val detectionTimeoutMs by preferencesManager.detectionDelay.collectAsState()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -84,18 +86,31 @@ fun PreferencesScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
             //-----------
-//            Text("Detection Delay Threshold")
+            Text("Detection Time")
+            Slider(
+                value = (detectionTimeMs / 1000).toFloat(),
+                onValueChange = {
+                    preferencesManager.updateDetectionDelay((it*1000L).toLong())
+                },
+                valueRange = 0f..5f, // 秒的範圍
+                steps = 4 // 6 - 2 = 4 步長
+            )
+            Text(
+                text = String.format("${detectionTimeMs / 1000}"),
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
+//            //-----------
+//            Text("Detection Timeout")
 //            Slider(
-//                value = (detectionDelayms / 1000).toFloat(), // 將毫秒轉換為秒
-//                onValueChange = { newValue ->
-//                    Log.e("aaaa", "$newValue")
-//                    detectionDelayms = (newValue * 1000).toLong() // 將秒轉換回毫秒
+//                value = (detectionTimeoutMs / 1000).toFloat(),
+//                onValueChange = {
+//                    preferencesManager.updateDetectionTimeout((it*1000L).toLong())
 //                },
-//                valueRange = 1f..10f, // 秒的範圍
-//                steps = 8 // 10 - 2 = 8 步長
+//                valueRange = 10f..120f, // 秒的範圍
+//                steps = 10 // 12 - 2 = 10 步長
 //            )
 //            Text(
-//                text = String.format("${detectionDelayms / 1000}"),
+//                text = String.format("${detectionTimeoutMs / 1000}"),
 //                modifier = Modifier.align(Alignment.CenterHorizontally)
 //            )
         }
