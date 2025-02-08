@@ -36,6 +36,7 @@ import androidx.compose.material.icons.filled.FileUpload
 import androidx.compose.material.icons.filled.InstallMobile
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -98,7 +99,8 @@ import java.util.zip.ZipOutputStream
 fun FaceListScreen(
     onNavigateBack: (() -> Unit),
     onAddFaceClick: (() -> Unit),
-    onFaceItemClick: (PersonRecord) -> Unit
+    onFaceItemClick: (PersonRecord) -> Unit,
+    onPreferenceClick: () -> Unit
 ) {
     val context = LocalContext.current
     val viewModel: FaceListScreenViewModel = koinViewModel()
@@ -150,6 +152,19 @@ fun FaceListScreen(
                             expanded = isMenuExpanded,
                             onDismissRequest = { isMenuExpanded = false }
                         ) {
+                            DropdownMenuItem(
+                                text = { Text("Settings") },
+                                onClick = {
+                                    isMenuExpanded = false
+                                    onPreferenceClick()
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Default.Settings,
+                                        contentDescription = null
+                                    )
+                                }
+                            )
                             DropdownMenuItem(
                                 text = { Text("Export Images") },
                                 onClick = {

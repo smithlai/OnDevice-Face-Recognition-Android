@@ -8,6 +8,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
 import com.ml.shubham0204.facenet_android.BuildConfig
+import com.ml.shubham0204.facenet_android.PreferenceManager
 import com.ml.shubham0204.facenet_android.data.FaceImageRecord
 import com.ml.shubham0204.facenet_android.data.ImagesVectorDB
 import com.ml.shubham0204.facenet_android.data.RecognitionMetrics
@@ -101,7 +102,8 @@ class ImageVectorUseCase(
     // From the given frame, return the name of the person by performing
     // face recognition
     suspend fun getNearestPersonName(
-        frameBitmap: Bitmap
+        frameBitmap: Bitmap,
+        confidence_threshold: Float
     ): Pair<RecognitionMetrics?, List<FaceRecognitionResult>> {
         // Perform face-detection and get the cropped face as a Bitmap
         val (faceCropResults, t1) =
@@ -118,7 +120,7 @@ class ImageVectorUseCase(
             avgT2 += t2.toLong(DurationUnit.MILLISECONDS)
             // Perform nearest-neighbor search
             val (recognitionResults, t3) =
-                measureTimedValue { imagesVectorDB.getNearestEmbeddingPersonNames(embedding, 0) }
+                measureTimedValue { imagesVectorDB.getNearestEmbeddingPersonNames(embedding, 10) }
             avgT3 += t3.toLong(DurationUnit.MILLISECONDS)
 
             val spoofResult = faceSpoofDetector.detectSpoof(frameBitmap, boundingBox)
@@ -132,7 +134,7 @@ class ImageVectorUseCase(
                 // 遍歷 recognitionResults
                 for (recognitionResult in recognitionResults) {
                     val distance = cosineDistance(embedding, recognitionResult.faceEmbedding)
-                    if (distance > bestRecognitionResult.second && distance > BuildConfig.FACE_DETECTION_DISTANCE) {
+                    if (distance > bestRecognitionResult.second && distance > confidence_threshold) {
                         bestRecognitionResult = recognitionResult to distance
                     }
                 }

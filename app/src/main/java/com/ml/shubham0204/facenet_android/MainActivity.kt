@@ -22,6 +22,7 @@ import com.ml.shubham0204.facenet_android.presentation.screens.add_face.AddFaceS
 import com.ml.shubham0204.facenet_android.presentation.screens.detect_screen.DetectScreen
 import com.ml.shubham0204.facenet_android.presentation.screens.face_list.FaceListScreen
 import com.ml.shubham0204.facenet_android.presentation.screens.LoginScreen
+import com.ml.shubham0204.facenet_android.presentation.screens.PreferencesScreen
 
 class MainActivity : TimeoutActivity() {
 
@@ -109,9 +110,18 @@ class MainActivity : TimeoutActivity() {
                         onAddFaceClick = { navHostController.navigate("add-face/0") },
                         onFaceItemClick = { personRecord ->
                             navHostController.navigate("add-face/${personRecord.personID}")
+                        },
+                        onPreferenceClick = {
+                            navHostController.navigate("preference")
                         }
                     )
                 }
+                composable("preference") {
+                    PreferencesScreen(
+                        onNavigateBack = { navHostController.navigateUp() },
+                    )
+                }
+
             }
         }
     }

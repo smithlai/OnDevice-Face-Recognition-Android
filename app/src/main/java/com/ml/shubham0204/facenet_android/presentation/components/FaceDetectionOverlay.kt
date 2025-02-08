@@ -217,7 +217,7 @@ class FaceDetectionOverlay(
             }
             CoroutineScope(Dispatchers.Default).launch {
                 val predictions = ArrayList<Prediction>()
-                val (metrics, results) = viewModel.imageVectorUseCase.getNearestPersonName(frameBitmap)
+                val (metrics, results) = viewModel.imageVectorUseCase.getNearestPersonName(frameBitmap, viewModel.preferencesManager.detectionConfidence.value)
                 results.forEach {
                     (copppedface, person_id, boundingBox, spoofResult, cosineSimiliarity) ->
                     val box = boundingBox.toRectF()
