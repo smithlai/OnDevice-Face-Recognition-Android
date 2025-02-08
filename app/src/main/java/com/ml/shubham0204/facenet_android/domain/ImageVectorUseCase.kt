@@ -7,8 +7,6 @@ import android.graphics.Rect
 import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.mutableStateOf
-import com.ml.shubham0204.facenet_android.BuildConfig
-import com.ml.shubham0204.facenet_android.PreferenceManager
 import com.ml.shubham0204.facenet_android.data.FaceImageRecord
 import com.ml.shubham0204.facenet_android.data.ImagesVectorDB
 import com.ml.shubham0204.facenet_android.data.RecognitionMetrics

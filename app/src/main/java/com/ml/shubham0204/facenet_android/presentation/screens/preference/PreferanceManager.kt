@@ -1,9 +1,7 @@
-package com.ml.shubham0204.facenet_android
+package com.ml.shubham0204.facenet_android.presentation.screens.preference
 
 import android.content.Context
-import android.util.Log
-import androidx.compose.runtime.MutableState
-import androidx.compose.runtime.mutableStateOf
+import com.ml.shubham0204.facenet_android.BuildConfig
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import org.koin.core.annotation.Single
