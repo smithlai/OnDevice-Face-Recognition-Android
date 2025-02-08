@@ -42,10 +42,12 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -78,6 +80,8 @@ private lateinit var cameraPermissionLauncher: ManagedActivityResultLauncher<Str
 @kotlin.OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: (() -> Unit),onOpenFaceListClick: (() -> Unit)) {
+    val activity = LocalContext.current as? TimeoutActivity
+    val viewModel: DetectScreenViewModel = koinViewModel()
     FaceNetAndroidTheme {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
@@ -110,7 +114,7 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
                             )
 
                             // IconButton 居中，佔用剩餘空間
-                            var isFaceIconVisible by remember { mutableStateOf(!(from_external && !adding_user)) } // 使用者模式隱藏按鈕
+                            var isFaceIconVisible by rememberSaveable { mutableStateOf(!(from_external && !adding_user)) } // 使用者模式隱藏按鈕
                             Box(
                                 modifier = Modifier
                                     .weight(1f) // 佔用剩餘空間
@@ -168,19 +172,26 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
             Column(modifier = Modifier.padding(innerPadding)) { ScreenUI(from_external, adding_user) }
         }
     }
-    val activity = LocalContext.current as? TimeoutActivity
-    LaunchedEffect (Unit){
-        setupInactivityTimer(activity)
+
+    val timeoutMs by viewModel.preferencesManager.detectionTimeout.collectAsState()
+
+    // 畫面初次顯示時執行（只觸發一次）
+    LaunchedEffect (true){
+        setupInactivityTimer(activity, timeoutms = timeoutMs)
     }
+    LaunchedEffect (timeoutMs){
+        setupInactivityTimer(activity, timeoutms = timeoutMs)
+    }
+
 }
-fun setupInactivityTimer(activity: TimeoutActivity?){
+fun setupInactivityTimer(activity: TimeoutActivity?, timeoutms: Long?=null){
     //        if (from_external) {
     activity?.setupInactivityTimer(
         {
             activity?.setResult(Activity.RESULT_CANCELED)
             activity?.finish()
-        }, newinactivity_timeout_ms = BuildConfig.FACE_DETECTION_TIMEOUT,
-        newwarning_before_close_ms = BuildConfig.FACE_DETECTION_TIMEOUT / 2
+        }, newinactivity_timeout_ms = timeoutms,
+        newwarning_before_close_ms = if (timeoutms != null) timeoutms/2 else null
     )
 //        }else{
 //            activity?.clearInactivityTimer()
@@ -189,6 +200,7 @@ fun setupInactivityTimer(activity: TimeoutActivity?){
 @Composable
 private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
     val viewModel: DetectScreenViewModel = koinViewModel()
+    val detectionDelay by viewModel.preferencesManager.detectionDelay.collectAsState()
     val activity = LocalContext.current as? TimeoutActivity
     Box {
         Camera(viewModel)
@@ -202,7 +214,7 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
                         if (adding_user) {
                             "臉部拍照中，按下上方笑臉圖案截圖"
                         }else{
-                            "偵測臉部中，請靜止${viewModel.preferencesManager.detectionDelay.value/1000}秒確保人物正確"
+                            "偵測臉部中，請靜止${detectionDelay/1000}秒確保人物正確"
                         }
                     }else {
                         "Recognition on $numPeople face(s)"
@@ -265,7 +277,7 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
                             val currentTime = System.currentTimeMillis()
                             if (result.personID == lastPersonID) {
                                 viewModel.validFaceElapse.value = currentTime - lastFaceTimestamp
-                                if (viewModel.validFaceElapse.value >= viewModel.preferencesManager.detectionDelay.value) {
+                                if (viewModel.validFaceElapse.value >= detectionDelay) {
                                     currentResult = result
                                 }
                             } else {

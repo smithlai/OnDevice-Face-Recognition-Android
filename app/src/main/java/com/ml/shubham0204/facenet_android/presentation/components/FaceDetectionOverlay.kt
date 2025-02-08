@@ -10,14 +10,10 @@ import android.graphics.Matrix
 import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.Shader
-import android.hardware.camera2.CameraCharacteristics
 import android.util.Log
 import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.widget.FrameLayout
-import androidx.annotation.OptIn
-import androidx.camera.camera2.interop.Camera2CameraInfo
-import androidx.camera.camera2.interop.ExperimentalCamera2Interop
 import androidx.camera.core.AspectRatio
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ExperimentalGetImage
@@ -29,7 +25,6 @@ import androidx.core.content.ContextCompat
 import androidx.core.graphics.toRectF
 import androidx.core.view.doOnLayout
 import androidx.lifecycle.LifecycleOwner
-import com.ml.shubham0204.facenet_android.BuildConfig
 import com.ml.shubham0204.facenet_android.presentation.screens.detect_screen.DetectScreenViewModel
 import java.util.concurrent.Executors
 import kotlinx.coroutines.CoroutineScope
@@ -317,12 +312,12 @@ class FaceDetectionOverlay(
             }
         }
         fun draw_gauge(canvas: Canvas, it:FaceDetectionOverlay.Prediction){
-            val detecttime = viewModel.preferencesManager.detectionDelay.value
+            val detectionDelay = viewModel.preferencesManager.detectionDelay.value
             if (viewModel.validFaceElapse.value > 0) {
-                val percentage = if (viewModel.validFaceElapse.value > 0 && detecttime > 0) {
+                val percentage = if (viewModel.validFaceElapse.value > 0 && detectionDelay > 0) {
                     min(
                         100.0f,
-                        viewModel.validFaceElapse.value.toFloat() * 100 / detecttime
+                        viewModel.validFaceElapse.value.toFloat() * 100 / detectionDelay
                     ).toInt()
                 } else {
                     0

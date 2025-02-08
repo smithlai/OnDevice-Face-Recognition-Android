@@ -34,16 +34,16 @@ class PreferenceManager(context: Context) {
         _detectionDelay.value = ms
     }
 
-//    // Detection timeout
-//    private val _detectionTimeout = MutableStateFlow(
-//        prefs.getLong("detectionTimeout", BuildConfig.FACE_DETECTION_TIMEOUT)
-//    )
-//    val detectionTimeout = _detectionTimeout.asStateFlow()
-//
-//    fun updateDetectionTimeout(ms: Long) {
-//        prefs.edit().putLong("detectionTimeout", ms).apply()
-//        _detectionTimeout.value = ms
-//    }
+    // Detection timeout
+    private val _detectionTimeout = MutableStateFlow(
+        prefs.getLong("detectionTimeout", BuildConfig.FACE_DETECTION_TIMEOUT)
+    )
+    val detectionTimeout = _detectionTimeout.asStateFlow()
+
+    fun updateDetectionTimeout(ms: Long) {
+        prefs.edit().putLong("detectionTimeout", ms).apply()
+        _detectionTimeout.value = ms
+    }
 //    // Auto Close time
 //    private val _inactiveTimeout = MutableStateFlow(
 //        prefs.getLong("inactiveTimeout", BuildConfig.INACTIVITY_TIMEOUT)

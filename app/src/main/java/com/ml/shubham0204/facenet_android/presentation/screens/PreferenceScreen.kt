@@ -31,6 +31,7 @@ import com.ml.shubham0204.facenet_android.domain.PersonUseCase
 import com.ml.shubham0204.facenet_android.presentation.screens.detect_screen.DetectScreenViewModel
 import org.koin.android.annotation.KoinViewModel
 import org.koin.androidx.compose.koinViewModel
+import kotlin.math.roundToInt
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -45,7 +46,7 @@ fun PreferencesScreen(
     val preferencesManager = viewModel.preferencesManager
     val detectionConfidence by preferencesManager.detectionConfidence.collectAsState()
     val detectionTimeMs by preferencesManager.detectionDelay.collectAsState()
-    val detectionTimeoutMs by preferencesManager.detectionDelay.collectAsState()
+    val detectionTimeoutMs by preferencesManager.detectionTimeout.collectAsState()
     Scaffold(
         topBar = {
             TopAppBar(
@@ -71,11 +72,12 @@ fun PreferencesScreen(
 //            Spacer(modifier = Modifier.height(16.dp))
 
             // Detection Confidence Threshold Slider
-            Text("Detection Confidence Threshold")
+            Text("Detection Confidence")
             Slider(
                 value = detectionConfidence,
                 onValueChange = {
-                    preferencesManager.updateDetectionConfidence(it)
+                    val roundedValue = ((it / 0.05f).roundToInt() * 0.05f) // 四捨五入到最近的 0.05
+                    preferencesManager.updateDetectionConfidence(roundedValue)
                 },
                 valueRange = 0.5f..1.0f,
                 steps = 9   // 11 - 2(start/end) = 9
@@ -86,11 +88,12 @@ fun PreferencesScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
             //-----------
-            Text("Detection Time")
+            Text("Detection Delay")
             Slider(
-                value = (detectionTimeMs / 1000).toFloat(),
+                value = detectionTimeMs / 1000f,
                 onValueChange = {
-                    preferencesManager.updateDetectionDelay((it*1000L).toLong())
+                    val roundedValue = Math.round(it)
+                    preferencesManager.updateDetectionDelay((roundedValue*1000L).toLong())
                 },
                 valueRange = 0f..5f, // 秒的範圍
                 steps = 4 // 6 - 2 = 4 步長
@@ -99,20 +102,21 @@ fun PreferencesScreen(
                 text = String.format("${detectionTimeMs / 1000}"),
                 modifier = Modifier.align(Alignment.CenterHorizontally)
             )
-//            //-----------
-//            Text("Detection Timeout")
-//            Slider(
-//                value = (detectionTimeoutMs / 1000).toFloat(),
-//                onValueChange = {
-//                    preferencesManager.updateDetectionTimeout((it*1000L).toLong())
-//                },
-//                valueRange = 10f..120f, // 秒的範圍
-//                steps = 10 // 12 - 2 = 10 步長
-//            )
-//            Text(
-//                text = String.format("${detectionTimeoutMs / 1000}"),
-//                modifier = Modifier.align(Alignment.CenterHorizontally)
-//            )
+            //-----------
+            Text("Detection Timeout")
+            Slider(
+                value = detectionTimeoutMs / 1000f,
+                onValueChange = {
+                    val roundedValue = Math.round(it)
+                    preferencesManager.updateDetectionTimeout((roundedValue*1000L).toLong())
+                },
+                valueRange = 10f..120f, // 秒的範圍
+                steps = 10 // 12 - 2 = 10 步長
+            )
+            Text(
+                text = String.format("${detectionTimeoutMs / 1000}"),
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
         }
     }
 }
@@ -122,7 +126,4 @@ fun PreferencesScreen(
 class PreferencesViewModel(
     val preferencesManager: PreferenceManager
 ) : ViewModel() {
-    fun aaa(){
-        preferencesManager.detectionConfidence
-    }
 }
