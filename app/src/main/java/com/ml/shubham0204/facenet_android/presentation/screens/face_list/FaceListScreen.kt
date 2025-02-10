@@ -358,8 +358,8 @@ private fun ScreenUI(
     onFaceItemClick: (PersonRecord) -> Unit
 ) {
     val faces by viewModel.personFlow.collectAsState(emptyList())
-    val firstResult: ImageVectorUseCase.FaceRecognitionResult? =
-        viewModel.imageVectorUseCase.latestFaceRecognitionResult.value.getOrNull(0)
+    val faceDetectionResults by viewModel.imageVectorUseCase.latestFaceRecognitionResult.collectAsState()
+    val firstResult: ImageVectorUseCase.FaceRecognitionResult? = faceDetectionResults.firstOrNull()
 
     LazyColumn(
         modifier = Modifier.fillMaxSize()

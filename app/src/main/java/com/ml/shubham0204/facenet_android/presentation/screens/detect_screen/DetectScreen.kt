@@ -146,7 +146,7 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
 //                            Icon(
 //                                imageVector = Icons.Default.Face,
 //                                contentDescription = "Open Face List",
-//                                modifier = Modifier.size(48.dp) // 放大 Icon
+//                                modifier = Modifier.size(48.dp)
 //                            )
 //                        }
 //                        Spacer(modifier = Modifier.width(Dp(20f)))
@@ -162,7 +162,7 @@ fun DetectScreen(from_external: Boolean, adding_user: Boolean,onNavigateBack: ((
 ////                            Icon(
 ////                                imageVector = Icons.Default.Cameraswitch,
 ////                                contentDescription = "Switch Camera",
-////                                modifier = Modifier.size(48.dp) // 放大 Icon
+////                                modifier = Modifier.size(48.dp)
 ////                            )
 ////                        }
                     }
@@ -206,7 +206,7 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
         Camera(viewModel)
         DelayedVisibility(viewModel.getNumPeople() > 0) {
             val metrics by remember{ viewModel.faceDetectionMetricsState }
-            val faceDetectionResults = viewModel.imageVectorUseCase.latestFaceRecognitionResult
+            val faceDetectionResults by viewModel.imageVectorUseCase.latestFaceRecognitionResult.collectAsState()
             val numPeople = viewModel.getNumPeople()
             Column {
                 Text(
@@ -239,39 +239,16 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
 //                    )
 //                }
 
-                var lastPersonID: Long? by remember { mutableStateOf(null) }
-                var lastFaceTimestamp: Long by remember { mutableStateOf(0L) }
+                var lastPersonID: Long? = remember { null }
+                var lastFaceTimestamp: Long = remember { 0L }
 //                var idleStart: Long by remember { mutableStateOf(System.currentTimeMillis()) }
                 var currentResult: ImageVectorUseCase.FaceRecognitionResult? by remember { mutableStateOf(null) }
-//                viewModel.detectionScreenElapse.value = System.currentTimeMillis() - idleStart
-
-//                // 添加倒數計時顯示
-//                if (viewModel.detectionScreenElapse.value > 0) {
-//
-//                    val remainingTime = (BuildConfig.FACE_DETECTION_TIMEOUT - viewModel.detectionScreenElapse.value)
-//                    if (remainingTime > 0) {
-//                        Text(
-//                            text = "${remainingTime / 1000}秒後自動關閉",
-//                            color = Color.White,
-//                            modifier = Modifier
-//                                .fillMaxWidth()
-//                                .padding(top = 16.dp),
-//                            textAlign = TextAlign.Center
-//                        )
-//                    }
-//                }
-
-//                if (viewModel.detectionScreenElapse.value > BuildConfig.FACE_DETECTION_TIMEOUT) {
-//                        // 超時，關閉活動
-//                        activity?.setResult(Activity.RESULT_CANCELED)
-//                        activity?.finish()
-//                    }
 
 
                 // 偵測臉部邏輯
                 if (from_external && !adding_user && currentResult == null) {
-                    if (faceDetectionResults.value.size == 1) {
-                        faceDetectionResults.value.getOrNull(0)?.takeIf {
+                    if (faceDetectionResults.size == 1) {
+                        faceDetectionResults.getOrNull(0)?.takeIf {
                             it.spoofResult?.isSpoof != true && it.personID > 0
                         }?.let { result ->
                             val currentTime = System.currentTimeMillis()

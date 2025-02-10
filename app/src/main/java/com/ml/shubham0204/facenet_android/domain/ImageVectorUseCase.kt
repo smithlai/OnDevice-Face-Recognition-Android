@@ -14,6 +14,8 @@ import com.ml.shubham0204.facenet_android.domain.embeddings.FaceNet
 import com.ml.shubham0204.facenet_android.domain.face_detection.FaceSpoofDetector
 import com.ml.shubham0204.facenet_android.domain.face_detection.MediapipeFaceDetector
 import com.ml.shubham0204.facenet_android.presentation.components.setProgressDialogText
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlin.math.pow
 import kotlin.math.sqrt
 import kotlin.time.DurationUnit
@@ -33,7 +35,8 @@ class ImageVectorUseCase(
         const val IMAGE_DIR = "PersonImages"
         const val CACHE_DIR = "PersonImagesCache"
     }
-    val latestFaceRecognitionResult = mutableStateOf<List<FaceRecognitionResult>>(emptyList())
+    val _latestFaceRecognitionResult = MutableStateFlow<List<FaceRecognitionResult>>(emptyList())
+    val latestFaceRecognitionResult = _latestFaceRecognitionResult.asStateFlow()
     data class FaceRecognitionResult(
         val croppedFace:Bitmap,
         val personID: Long,
@@ -160,7 +163,7 @@ class ImageVectorUseCase(
             } else {
                 null
             }
-        latestFaceRecognitionResult.value=faceRecognitionResults
+        _latestFaceRecognitionResult.value=faceRecognitionResults
         return Pair(metrics, faceRecognitionResults)
     }
 

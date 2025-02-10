@@ -22,7 +22,7 @@ import com.ml.shubham0204.facenet_android.presentation.screens.add_face.AddFaceS
 import com.ml.shubham0204.facenet_android.presentation.screens.detect_screen.DetectScreen
 import com.ml.shubham0204.facenet_android.presentation.screens.face_list.FaceListScreen
 import com.ml.shubham0204.facenet_android.presentation.screens.LoginScreen
-import com.ml.shubham0204.facenet_android.presentation.screens.PreferencesScreen
+import com.ml.shubham0204.facenet_android.presentation.screens.preference.PreferencesScreen
 
 class MainActivity : TimeoutActivity() {
 
