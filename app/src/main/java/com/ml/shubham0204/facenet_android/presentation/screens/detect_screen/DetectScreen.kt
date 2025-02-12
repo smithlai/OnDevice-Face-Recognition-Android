@@ -239,8 +239,8 @@ private fun ScreenUI(from_external: Boolean, adding_user: Boolean) {
 //                    )
 //                }
 
-                var lastPersonID: Long? = remember { null }
-                var lastFaceTimestamp: Long = remember { 0L }
+                var lastPersonID: Long? by remember { mutableStateOf(null) }
+                var lastFaceTimestamp: Long by remember { mutableStateOf(0L) }
 //                var idleStart: Long by remember { mutableStateOf(System.currentTimeMillis()) }
                 var currentResult: ImageVectorUseCase.FaceRecognitionResult? by remember { mutableStateOf(null) }
 
@@ -362,7 +362,7 @@ private fun Camera(viewModel: DetectScreenViewModel) {
     val context = LocalContext.current
     cameraPermissionStatus.value =
         ActivityCompat.checkSelfPermission(context, Manifest.permission.CAMERA) ==
-            PackageManager.PERMISSION_GRANTED
+                PackageManager.PERMISSION_GRANTED
     val cameraFacing by remember { cameraFacing }
     val lifecycleOwner = LocalLifecycleOwner.current
 
