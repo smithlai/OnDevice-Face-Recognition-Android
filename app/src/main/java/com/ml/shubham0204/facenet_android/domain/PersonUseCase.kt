@@ -8,7 +8,7 @@ import org.koin.core.annotation.Single
 @Single
 class PersonUseCase(private val personDB: PersonDB) {
 
-    fun addPerson(persion_id: Long, numImages: Long): Long {
+    fun addPerson(persion_id: Long): Long {
         return personDB.addPerson(
             PersonRecord(
                 personID = persion_id,

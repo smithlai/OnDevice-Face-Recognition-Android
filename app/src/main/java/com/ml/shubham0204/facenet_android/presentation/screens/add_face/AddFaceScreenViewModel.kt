@@ -15,6 +15,8 @@ import com.ml.shubham0204.facenet_android.presentation.components.setProgressDia
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.koin.android.annotation.KoinViewModel
 import java.io.File
 
@@ -33,66 +35,67 @@ class AddFaceScreenViewModel(
     val page_unselectedImageURIs: MutableState<List<Uri>> = mutableStateOf(emptyList())
     val isProcessingImages: MutableState<Boolean> = mutableStateOf(false)
     val numImagesProcessed: MutableState<Int> = mutableIntStateOf(0)
-
-    fun updateImages(personId:Long, selectedImageURIs:List<Uri>) {
+    private val processingMutex = Mutex()
+    fun updateImages(personId:Long, selectedImageURIs:List<Uri>, keepOld: Boolean =false) {
         isProcessingImages.value = true
         CoroutineScope(Dispatchers.Default).launch {
             var personCacheFolder: File? = null // 提前宣告 cacheFolder
-            try {
-                if ( personId <= 0) throw Exception("Invalid PersonID: $personId")
+            processingMutex.withLock {
+                try {
+                    if (personId <= 0) throw Exception("Invalid PersonID: $personId")
 
 
-                val existingPerson = personUseCase.getPersonById(personId)?:run{
-                    personUseCase.addPerson(personId, selectedImageURIs.size.toLong())
-                    personUseCase.getPersonById(personId)
-                }?: throw Exception("Failed to addPerson for PersonID: $personId")
+                    val existingPerson = personUseCase.getPersonById(personId) ?: run {
+                        personUseCase.addPerson(personId)
+                        personUseCase.getPersonById(personId)
+                    } ?: throw Exception("Failed to addPerson for PersonID: $personId")
 
 
-                // 建立目標資料夾與快取資料夾
-                val personImageFolder = imageVectorUseCase.createPersonImageFolder(personId)
-                    ?: throw Exception("Failed to create folder for PersonID: $personId")
+                    // 建立目標資料夾與快取資料夾
+                    val personImageFolder = imageVectorUseCase.createPersonImageFolder(personId)
+                        ?: throw Exception("Failed to create folder for PersonID: $personId")
 
-                personCacheFolder = imageVectorUseCase.createPersonCacheFolder(personId)
-                    ?: throw Exception("Failed to create cache for PersonID: $personId")
+                    personCacheFolder = imageVectorUseCase.createPersonCacheFolder(personId)
+                        ?: throw Exception("Failed to create cache for PersonID: $personId")
 
-                // 備份現有圖片到 Cache 資料夾
-                personImageFolder.listFiles()?.forEach { file ->
-                    val cacheFile = File(personCacheFolder, file.name)
-                    file.copyTo(cacheFile, overwrite = true)
-                    file.delete()
-                }
-
-                // 清空影像資料庫與資料夾
-                imageVectorUseCase.removeImages(personId)
-
-                imageVectorUseCase.removePersonImageFolder(personId)
-
-                // 新圖片處理
-                selectedImageURIs.forEach { imageUri ->
-                    try {
-                        val (resolvedUri, isFromCache) = resolveUri(imageUri, personImageFolder, personCacheFolder!!)
-
-                        imageVectorUseCase
-                            .addImage(personId, resolvedUri, isFromCache)
-                            .onFailure {
-                                Log.e("updateImages", "Failed to add image: ${resolvedUri}, Error: ${it.message}")
-                                throw it
-                            }
-                            .onSuccess {
-                                numImagesProcessed.value += 1
-                                setProgressDialogText("Processed ${numImagesProcessed.value} image(s)")
-                            }
-                    } catch (e: Exception) {
-                        Log.e("updateImages", "Error processing image URI: $imageUri", e)
-                        throw e
+                    // 備份現有圖片到 Cache 資料夾
+                    personImageFolder.listFiles()?.forEach { file ->
+                        val cacheFile = File(personCacheFolder, file.name)
+                        file.copyTo(cacheFile, overwrite = true)
+                        file.delete()
                     }
+
+                    // 清空影像資料庫與資料夾
+                    imageVectorUseCase.removeImages(personId)
+                    imageVectorUseCase.removePersonImageFolder(personId)
+
+                    // 新圖片處理
+                    selectedImageURIs.forEach { imageUri ->
+                        try {
+                            val (resolvedUri, isFromCache) = resolveUri(imageUri, personImageFolder, personCacheFolder!!)
+
+                            imageVectorUseCase
+                                .addImage(personId, resolvedUri, isFromCache)
+                                .onFailure {
+                                Log.e("updateImages", "Failed to add image: ${resolvedUri}, Error: ${it.message}")
+                                    throw it
+                                }
+                                .onSuccess {
+                                    numImagesProcessed.value += 1
+                                    setProgressDialogText("Processed ${numImagesProcessed.value} image(s)")
+                                }
+                        } catch (e: Exception) {
+                            Log.e("updateImages", "Error processing image URI: $imageUri", e)
+                            throw e
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("updateImages", "Error updating images", e)
+                } finally {
+                    // 清理 Cache 資料夾
+                    personCacheFolder?.deleteRecursively()
+                    isProcessingImages.value = false
                 }
-            } catch (e: Exception) {
-                Log.e("updateImages", "Error updating images", e)
-            } finally {
-                // 清理 Cache 資料夾
-                personCacheFolder?.deleteRecursively()
-                isProcessingImages.value = false
             }
         }
     }
